@@ -1,0 +1,26 @@
+{
+  "title": "Demo 18 canales",
+  "tracks": [
+    { "name": "Bateria",  "channels": [0, 1] },
+    { "name": "Congas",  "channels": [2, 3] },
+    { "name": "Percu",  "channels": [4] },
+    { "name": "Campana",  "channels": [5] },
+    { "name": "Bajo",  "channels": [6] },
+    { "name": "Teclado",  "channels": [7] },
+    { "name": "Saxo",  "channels": [8] },
+    { "name": "Trompeta nº1",  "channels": [11] },
+    { "name": "Trompeta nº2",  "channels": [12] },
+    { "name": "Trombon nº1", "channels": [9] },
+    { "name": "Trombon nº2", "channels": [10] },
+    { "name": "Elena", "channels": [13] },
+    { "name": "Guti", "channels": [14] },
+    { "name": "Coros", "channels": [15, 16] },
+    { "name": "Ordenes", "channels": [17] }
+  ],
+  "markers": [
+    { "time": 0,     "name": "Intro" },
+    { "time": 5.0,   "name": "Verso" },
+    { "time": 10.0,  "name": "Coro" },
+    { "time": 14.0,  "name": "Cierre" }
+  ]
+}

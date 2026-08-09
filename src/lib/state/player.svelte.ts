@@ -1,0 +1,57 @@
+import { writable } from 'svelte/store'
+import { AudioEngine, type TrackDef } from '../audio/engine'
+
+let engine: AudioEngine | null = null
+
+export const position = writable(0)
+export const duration = writable(0)
+export const playing = writable(false)
+export const trackCount = writable(0)
+export const ready = writable(false)
+
+function createEngine(): AudioEngine {
+  engine = new AudioEngine()
+  engine.onPositionUpdate((t) => position.set(t))
+  engine.onDurationUpdate((d) => duration.set(d))
+  return engine
+}
+
+export async function initPlayer(file: ArrayBuffer, tracks?: TrackDef[]): Promise<AudioEngine> {
+  const eng = createEngine()
+  await eng.init(file, tracks)
+  trackCount.set(eng.getTrackCount())
+  ready.set(true)
+  return eng
+}
+
+export function togglePlay() {
+  if (!engine) return
+  if (engine.isPlaying()) {
+    engine.pause()
+    playing.set(false)
+  } else {
+    engine.play(engine.getPosition())
+    playing.set(true)
+  }
+}
+
+export async function seek(time: number) {
+  if (!engine) return
+  await engine.seek(time)
+  position.set(time)
+  playing.set(engine.isPlaying())
+}
+
+export function setMasterVolume(v: number) { engine?.setMasterVolume(v) }
+export function setTrackVolume(ch: number, v: number) { engine?.setTrackVolume(ch, v) }
+export function setTrackPan(ch: number, pan: number) { engine?.setTrackPan(ch, pan) }
+export function setTrackMute(ch: number, mute: boolean) { engine?.setTrackMute(ch, mute) }
+export function setTrackSolo(ch: number, solo: boolean) { engine?.setTrackSolo(ch, solo) }
+export function resetMix() { engine?.resetMix() }
+
+export function getTrackLevel(ch: number): number { return engine?.getTrackLevel(ch) ?? 0 }
+export function getMasterLevel(): number { return engine?.getMasterLevel() ?? 0 }
+export function getTrackCount(): number { return engine?.getTrackCount() ?? 0 }
+export function getMasterVolume(): number { return engine?.getMasterVolume() ?? 0.8 }
+export function getMixState() { return engine?.getMixState() ?? [] }
+export function getTrackDefs(): TrackDef[] { return engine?.getTrackDefs() ?? [] }
