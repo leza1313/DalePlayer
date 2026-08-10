@@ -26,5 +26,5 @@ export function applyMixFromState(): void {
     setTrackMute(ch, mix.mute)
     setTrackSolo(ch, mix.solo)
   })
-  setMasterVolume(state.concert.masterVolume)
+  setMasterVolume(state.concert.masterVolume ?? 1)
 }

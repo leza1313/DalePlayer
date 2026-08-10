@@ -8,6 +8,7 @@
 
   const state = appState
   $: phase = $state.phase
+  let view: 'rehearsal' | 'mixer' = 'rehearsal'
 </script>
 
 <main class="app">
@@ -15,12 +16,15 @@
     <GateScreen />
   {:else if phase === 'loading'}
     <LoaderScreen />
-  {:else if phase === 'ready'}
-    <div class="mixer-layout">
-      <MixerView />
-      <TransportBar />
-    </div>
-    <MarkerList />
+    {:else if phase === 'ready'}
+      <div class="mixer-layout">
+       {#if view === 'rehearsal'}
+         <MarkerList on:openMixer={() => view = 'mixer'} />
+       {:else}
+         <MixerView on:closeMixer={() => view = 'rehearsal'} />
+       {/if}
+       <TransportBar />
+     </div>
   {/if}
 </main>
 
@@ -36,5 +40,11 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  @media (max-width: 600px) {
+    .mixer-layout {
+      min-height: 0;
+    }
   }
 </style>

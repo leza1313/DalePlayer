@@ -1,11 +1,16 @@
 <script lang="ts">
+  import { createEventDispatcher } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { seek } from '../state/player.svelte'
+  import { playing, position, seek, togglePlay } from '../state/player.svelte'
+
+  const dispatch = createEventDispatcher<{ openMixer: void }>()
 
   $: concert = $appState.concert
   $: markers = concert?.manifest?.markers ?? []
-
-  let expanded = false
+  $: currentPosition = $position
+  $: isPlaying = $playing
+  $: activeIndex = markers.reduce((active, marker, index) =>
+    marker.time <= currentPosition ? index : active, 0)
 
   function formatTime(s: number): string {
     const m = Math.floor(s / 60)
@@ -13,91 +18,142 @@
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
-  function jumpTo(marker: { time: number }) {
-    seek(marker.time)
+  async function playMarker(time: number) {
+    await seek(time)
+    if (!$playing) togglePlay()
   }
 </script>
 
-{#if markers.length > 0}
-  <div class="marker-list" class:expanded>
-    <button class="marker-toggle" on:click={() => expanded = !expanded}>
-      Canciones ({markers.length})
-      <span class="toggle-arrow">{expanded ? '▼' : '▲'}</span>
-    </button>
-    {#if expanded}
-      <div class="marker-items">
-        {#each markers as marker}
-          <button
-            class="marker-item"
-            on:click={() => jumpTo(marker)}
-          >
-            <span class="marker-name">{marker.name}</span>
-            <span class="marker-time">{formatTime(marker.time)}</span>
-          </button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-{/if}
+<section class="rehearsal-view">
+  <header class="rehearsal-header">
+    <div>
+      <p class="eyebrow">Ensayo</p>
+      <h1>{$appState.concert?.manifest?.title ?? 'Setlist'}</h1>
+    </div>
+    <button class="mixer-button" on:click={() => dispatch('openMixer')}>Mezclador</button>
+  </header>
+
+  {#if markers.length > 0}
+    <div class="setlist" aria-label="Setlist">
+      {#each markers as marker, index}
+        <button
+          class="song-row"
+          class:current={index === activeIndex}
+          on:click={() => playMarker(marker.time)}
+        >
+          <span class="song-index">{String(index + 1).padStart(2, '0')}</span>
+          <span class="song-copy">
+            <span class="song-name">{marker.name}</span>
+            <span class="song-time">{formatTime(marker.time)}</span>
+          </span>
+          {#if index === activeIndex && isPlaying}
+            <span class="playing-indicator" aria-label="Reproduciendo">●</span>
+          {/if}
+        </button>
+      {/each}
+    </div>
+  {:else}
+    <div class="empty-setlist">
+      <strong>Sin canciones marcadas</strong>
+      <span>Usa el mezclador para preparar tu escucha.</span>
+    </div>
+  {/if}
+</section>
 
 <style>
-  .marker-list {
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border);
-    max-height: 32px;
-    overflow: hidden;
-    transition: max-height 0.2s;
-  }
-
-  .marker-list.expanded {
-    max-height: 50vh;
+  .rehearsal-view {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    padding: 20px 16px 24px;
   }
 
-  .marker-toggle {
-    width: 100%;
-    padding: 6px 12px;
-    background: none;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
+  .rehearsal-header {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: center;
+    gap: 16px;
+    max-width: 720px;
+    margin: 0 auto 24px;
   }
 
-  .toggle-arrow {
-    font-size: 0.65rem;
+  .eyebrow {
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
   }
 
-  .marker-items {
-    padding: 0 4px 4px;
-  }
-
-  .marker-item {
-    width: 100%;
-    padding: 8px 12px;
-    background: none;
+  h1 {
     color: var(--text-primary);
-    font-size: 0.85rem;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    border-radius: 4px;
+    font-size: clamp(1.35rem, 5vw, 2rem);
+    line-height: 1.1;
   }
 
-  .marker-item:hover {
-    background: var(--fader-track);
-  }
-
-  .marker-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .mixer-button {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-primary);
+    font-weight: 700;
     white-space: nowrap;
   }
 
-  .marker-time {
-    color: var(--text-secondary);
-    margin-left: 8px;
-    flex-shrink: 0;
+  .mixer-button:active { background: var(--accent); }
+
+  .setlist { max-width: 720px; margin: 0 auto; }
+
+  .song-row {
+    width: 100%;
+    min-height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    text-align: left;
   }
+
+  .song-row.current {
+    border-color: var(--accent);
+    background: linear-gradient(90deg, rgba(233, 69, 96, 0.18), var(--bg-surface));
+  }
+
+  .song-index {
+    width: 28px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .song-copy {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .song-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+  .song-time { color: var(--text-secondary); font-size: 0.78rem; }
+  .playing-indicator { color: var(--accent); font-size: 1.1rem; }
+
+  .empty-setlist {
+    display: grid;
+    gap: 8px;
+    max-width: 720px;
+    margin: 48px auto;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .empty-setlist strong { color: var(--text-primary); }
 </style>

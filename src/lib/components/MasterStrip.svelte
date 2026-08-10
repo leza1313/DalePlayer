@@ -1,169 +1,66 @@
 <script lang="ts">
-  import { setMasterVolume, getMasterLevel, resetMix } from '../state/player.svelte'
-  import { scheduleMixSave } from '../state/mixState'
+  import { onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { onDestroy, onMount } from 'svelte'
+  import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
+  import { getMasterLevel, masterVolume as masterVolumeState, resetMix, setMasterVolume } from '../state/player.svelte'
+  import { scheduleMixSave } from '../state/mixState'
 
-  let masterVolume = 0.8
+  let masterVolume = 1
+  $: masterVolume = $masterVolumeState
   let level = 0
+  let confirmReset = false
   let vuInterval: ReturnType<typeof setInterval> | null = null
 
   onMount(() => {
-    const concert = $appState.concert
-    if (concert) {
-      masterVolume = concert.masterVolume ?? 0.8
-    }
+    setMasterVolume($appState.concert?.masterVolume ?? 1)
+    vuInterval = setInterval(() => { level = getMasterLevel() }, 70)
+    return () => { if (vuInterval !== null) clearInterval(vuInterval) }
   })
 
-  onDestroy(() => {
-    if (vuInterval !== null) clearInterval(vuInterval)
-  })
-
-  vuInterval = setInterval(() => {
-    level = getMasterLevel()
-  }, 50)
-
-  function handleVolume(v: number) {
-    masterVolume = v
-    setMasterVolume(v)
+  function handleVolume(value: number) {
+    setMasterVolume(dbToGain(sliderToDb(value)))
     scheduleMixSave()
   }
 
   function handleReset() {
+    if (!confirmReset) {
+      confirmReset = true
+      return
+    }
     resetMix()
-    masterVolume = 0.8
+    confirmReset = false
     scheduleMixSave()
   }
 </script>
 
-<div class="strip master">
-  <div class="strip-header">
-    <span class="strip-name">Master</span>
+<article class="master-card">
+  <div class="master-heading">
+    <div><span class="eyebrow">Salida</span><strong>Master</strong></div>
+    <output>{formatDb(masterVolume)}</output>
   </div>
-
-  <div class="strip-fader">
-    <div class="fader-wrap">
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        bind:value={masterVolume}
-        on:input={(e) => handleVolume(+e.currentTarget.value)}
-      />
-    </div>
+  <input type="range" min="0" max="1" step="0.001" value={dbToSlider(gainToDb(masterVolume))} on:input={(e) => handleVolume(+e.currentTarget.value)} aria-label="Volumen master" />
+  <div class="scale"><span>-∞</span><span>0 dB</span><span>+10 dB</span></div>
+  <div class="master-footer">
+    <div class="meter" class:warn={level > 0.7} class:clip={level > 0.9}><div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div></div>
+    <button class="reset-button" class:confirm={confirmReset} on:click={handleReset}>
+      {confirmReset ? 'Confirmar reset' : 'Restablecer mezcla'}
+    </button>
   </div>
-
-  <div class="master-vu">
-    <div class="vu-meter large" class:vuwarn={level > 0.7} class:vuclip={level > 0.9}>
-      <div class="vu-fill" style="height: {Math.min(level * 100, 100)}%"></div>
-    </div>
-  </div>
-
-  <button class="btn-reset" on:click={handleReset} title="Restablecer mezcla">
-    ↺
-  </button>
-</div>
+</article>
 
 <style>
-  .strip {
-    width: 72px;
-    min-width: 72px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: var(--bg-surface);
-    border-radius: var(--radius);
-    padding: 6px 4px;
-    gap: 4px;
-    margin-left: 8px;
-    border-left: 2px solid var(--accent);
-  }
-
-  .strip-header {
-    width: 100%;
-    text-align: center;
-  }
-
-  .strip-name {
-    font-size: 0.7rem;
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .strip-fader {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 0;
-    overflow: visible;
-  }
-
-  .fader-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-  }
-
-  .fader-wrap input[type="range"] {
-    transform: rotate(-90deg);
-    width: 150px;
-    height: 6px;
-  }
-
-  .master-vu {
-    padding: 4px 0;
-  }
-
-  .vu-meter {
-    width: 8px;
-    height: 60px;
-    background: var(--fader-track);
-    border-radius: 4px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-  }
-
-  .vu-meter.large {
-    width: 12px;
-    height: 80px;
-  }
-
-  .vu-fill {
-    width: 100%;
-    background: var(--vu-green);
-    border-radius: 4px;
-    transition: height 0.05s ease;
-  }
-
-  .vu-meter.vuwarn .vu-fill {
-    background: var(--vu-yellow);
-  }
-
-  .vu-meter.vuclip .vu-fill {
-    background: var(--vu-red);
-  }
-
-  .btn-reset {
-    margin-top: 8px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--fader-track);
-    color: var(--text-secondary);
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .btn-reset:hover {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-  }
+  .master-card { padding: 15px 14px; border: 1px solid var(--accent); border-radius: 12px; background: var(--bg-surface); }
+  .master-heading, .scale, .master-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .master-heading strong { display: block; font-size: 1rem; }
+  .eyebrow { display: block; color: var(--accent); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  output { color: var(--accent); font-size: 0.8rem; }
+  input[type="range"] { width: 100%; height: 32px; margin: 10px 0 2px; }
+  .scale { color: var(--text-secondary); font-size: 0.65rem; }
+  .master-footer { margin-top: 13px; }
+  .meter { height: 8px; flex: 1; overflow: hidden; border-radius: 8px; background: var(--fader-track); }
+  .meter-fill { height: 100%; border-radius: inherit; background: var(--vu-green); }
+  .meter.warn .meter-fill { background: var(--vu-yellow); }
+  .meter.clip .meter-fill { background: var(--vu-red); }
+  .reset-button { min-height: 38px; padding: 0 10px; border-radius: 7px; background: var(--fader-track); color: var(--text-secondary); font-size: 0.7rem; }
+  .reset-button.confirm { background: var(--accent); color: white; font-weight: 700; }
 </style>

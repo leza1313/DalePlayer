@@ -53,7 +53,7 @@ function postChunk(reqId: number, chunk: ChunkResult | null) {
     self.postMessage({ type: 'chunk', reqId, empty: true })
     return
   }
-  const buffers = chunk.channelData.map(c => c.buffer)
+  const buffers = chunk.channelData.map(c => c.buffer as ArrayBuffer)
   self.postMessage({
     type: 'chunk',
     reqId,
@@ -61,7 +61,7 @@ function postChunk(reqId: number, chunk: ChunkResult | null) {
     sampleRate: chunk.sampleRate,
     channelData: chunk.channelData,
     empty: false
-  }, buffers)
+  }, { transfer: buffers })
 }
 
 function postError(reqId: number, message: string) {

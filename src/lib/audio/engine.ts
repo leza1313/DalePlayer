@@ -17,7 +17,7 @@ type DurationCallback = (durationSeconds: number) => void
 
 interface MixStrip {
   gain: GainNode
-  panner: StereoPannerNode
+  panner: StereoPannerNode | null
   muteGate: GainNode
   analyser: AnalyserNode
 }
@@ -69,7 +69,7 @@ export class AudioEngine {
 
     this.solo = new Array(this.trackCount).fill(false)
     this.muted = new Array(this.trackCount).fill(false)
-    this.volumes = new Array(this.trackCount).fill(0.8)
+    this.volumes = new Array(this.trackCount).fill(1)
     this.pans = new Array(this.trackCount).fill(0)
     this.ready = true
     this.onDurationCallback?.(this.duration)
@@ -114,16 +114,20 @@ export class AudioEngine {
   }
 
   setTrackVolume(trackIdx: number, v: number): void {
-    if (trackIdx < this.strips.length && trackIdx < this.volumes.length) {
+    if (trackIdx < this.volumes.length) {
       this.volumes[trackIdx] = v
-      this.strips[trackIdx].gain.gain.value = v
+      if (trackIdx < this.strips.length) {
+        this.strips[trackIdx].gain.gain.value = v
+      }
     }
   }
 
   setTrackPan(trackIdx: number, pan: number): void {
-    if (trackIdx < this.strips.length) {
+    if (trackIdx < this.pans.length) {
       this.pans[trackIdx] = pan
-      this.strips[trackIdx].panner.pan.value = pan
+      if (trackIdx < this.strips.length && this.strips[trackIdx].panner) {
+        this.strips[trackIdx].panner.pan.value = pan
+      }
     }
   }
 
@@ -143,24 +147,24 @@ export class AudioEngine {
 
   resetMix(): void {
     for (let i = 0; i < this.trackCount; i++) {
-      this.volumes[i] = 0.8
+      this.volumes[i] = 1
       this.pans[i] = 0
       this.muted[i] = false
       this.solo[i] = false
       if (i < this.strips.length) {
-        this.strips[i].gain.gain.value = 0.8
-        this.strips[i].panner.pan.value = 0
+        this.strips[i].gain.gain.value = 1
+        this.strips[i].panner?.pan.setValueAtTime(0, this.ctx?.currentTime ?? 0)
       }
     }
     this.applyMuteSolo()
-    if (this.masterGain) this.masterGain.gain.value = 0.8
+    if (this.masterGain) this.masterGain.gain.value = 1
   }
 
   getMixState(): { volume: number; pan: number; mute: boolean; solo: boolean }[] {
     const state = []
     for (let i = 0; i < this.trackCount; i++) {
       state.push({
-        volume: this.volumes[i] ?? 0.8,
+        volume: this.volumes[i] ?? 1,
         pan: this.pans[i] ?? 0,
         mute: this.muted[i] ?? false,
         solo: this.solo[i] ?? false,
@@ -170,7 +174,7 @@ export class AudioEngine {
   }
 
   getMasterVolume(): number {
-    return this.masterGain?.gain.value ?? 0.8
+    return this.masterGain?.gain.value ?? 1
   }
 
   getTrackLevel(trackIdx: number): number {
@@ -243,7 +247,7 @@ export class AudioEngine {
         const srcCh = chs[0]
         if (srcCh >= chunk.channelData.length) continue
         const buffer = this.ctx.createBuffer(1, samplesPerRawCh, chunk.sampleRate)
-        buffer.copyToChannel(chunk.channelData[srcCh], 0)
+        buffer.copyToChannel(new Float32Array(chunk.channelData[srcCh]), 0)
         const source = this.ctx.createBufferSource()
         source.buffer = buffer
         source.connect(this.strips[trackIdx].gain)
@@ -278,7 +282,7 @@ export class AudioEngine {
     this.strips = []
 
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 0.8
+    this.masterGain.gain.value = 1
 
     this.masterAnalyser = this.ctx.createAnalyser()
     this.masterAnalyser.fftSize = 256
@@ -287,10 +291,11 @@ export class AudioEngine {
 
     for (let i = 0; i < this.trackCount; i++) {
       const gain = this.ctx.createGain()
-      gain.gain.value = this.volumes[i] ?? 0.8
+      gain.gain.value = this.volumes[i] ?? 1
 
-      const panner = this.ctx.createStereoPanner()
-      panner.pan.value = this.pans[i] ?? 0
+      const isMono = this.trackDefs[i]?.channels.length === 1
+      const panner = isMono ? this.ctx.createStereoPanner() : null
+      if (panner) panner.pan.value = this.pans[i] ?? 0
 
       const muteGate = this.ctx.createGain()
       muteGate.gain.value = 1
@@ -298,8 +303,12 @@ export class AudioEngine {
       const analyser = this.ctx.createAnalyser()
       analyser.fftSize = 256
 
-      gain.connect(panner)
-      panner.connect(muteGate)
+      if (panner) {
+        gain.connect(panner)
+        panner.connect(muteGate)
+      } else {
+        gain.connect(muteGate)
+      }
       muteGate.connect(analyser)
       analyser.connect(this.masterGain)
 

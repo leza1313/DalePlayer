@@ -1,19 +1,21 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { position, duration, playing, seek } from '../state/player.svelte'
+  import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
+  import { duration, masterVolume as masterVolumeState, playing, position, seek, setMasterVolume, togglePlay } from '../state/player.svelte'
+  import { scheduleMixSave } from '../state/mixState'
 
-  $: concert = $appState.concert
-  $: markers = concert?.manifest?.markers ?? []
-
-  let currentTime = 0
-  let dur = 0
-  let isPlaying = false
-
+  $: markers = $appState.concert?.manifest?.markers ?? []
   $: currentTime = $position
   $: dur = $duration
   $: isPlaying = $playing
+  $: currentSong = markers.reduce((active, marker) => marker.time <= currentTime ? marker : active, markers[0])
+  let masterVolume = 1
+  $: masterVolume = $masterVolumeState
 
-  import { togglePlay } from '../state/player.svelte'
+  onMount(() => {
+    masterVolume = $appState.concert?.masterVolume ?? 1
+  })
 
   function formatTime(s: number): string {
     const m = Math.floor(s / 60)
@@ -23,8 +25,7 @@
 
   function handleSeek(e: MouseEvent) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    seek(ratio * dur)
+    seek(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * dur)
   }
 
   function handleSeekKey(e: KeyboardEvent) {
@@ -33,105 +34,82 @@
     }
   }
 
-  function jumpToMarker(marker: { time: number }) {
-    seek(marker.time)
+  function handleMaster(value: number) {
+    masterVolume = dbToGain(sliderToDb(value))
+    setMasterVolume(masterVolume)
+    scheduleMixSave()
   }
 </script>
 
-<div class="transport">
-  <button class="transport-btn play" on:click={togglePlay}>
-    {isPlaying ? '⏸' : '▶'}
+<footer class="transport">
+  <button class="transport-btn play" aria-label={isPlaying ? 'Pausar' : 'Reproducir'} on:click={togglePlay}>
+    {isPlaying ? '❚❚' : '▶'}
   </button>
 
-  <div
-    class="transport-bar"
-    role="button"
-    tabindex="0"
-    on:click={handleSeek}
-    on:keydown={handleSeekKey}
-  >
-    <div class="bar-track">
-      <div class="bar-fill" style="width: {(dur ? (currentTime / dur) * 100 : 0)}%"></div>
-      {#each markers as marker}
-        <button
-          class="bar-marker"
-          style="left: {(dur ? (marker.time / dur) * 100 : 0)}%"
-          title={marker.name}
-          on:click|stopPropagation={() => jumpToMarker(marker)}
-        ></button>
-      {/each}
+  <div class="transport-main">
+    <div class="transport-song">{currentSong?.name ?? 'Sin canción seleccionada'}</div>
+    <div class="transport-progress" role="button" tabindex="0" aria-label="Posición de reproducción" on:click={handleSeek} on:keydown={handleSeekKey}>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: {(dur ? (currentTime / dur) * 100 : 0)}%"></div>
+        {#each markers as marker}
+          <span class="bar-marker" style="left: {(dur ? (marker.time / dur) * 100 : 0)}%"></span>
+        {/each}
+      </div>
     </div>
+    <div class="transport-time">{formatTime(currentTime)} / {formatTime(dur)}</div>
   </div>
 
-  <span class="transport-time">{formatTime(currentTime)}</span>
-</div>
+  <label class="master-control">
+    <span>Master</span>
+    <input
+      type="range"
+      min="0"
+      max="1"
+      step="0.001"
+      value={dbToSlider(gainToDb(masterVolume))}
+      on:input={(e) => handleMaster(+e.currentTarget.value)}
+      aria-label="Volumen master"
+    />
+    <strong>{formatDb(masterVolume)}</strong>
+  </label>
+</footer>
 
 <style>
   .transport {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 10px;
+    padding: 10px 12px max(10px, env(safe-area-inset-bottom));
     background: var(--bg-secondary);
     border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   .transport-btn {
-    width: 40px;
-    height: 40px;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
     border-radius: 50%;
     background: var(--accent);
     color: white;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
   }
 
-  .transport-bar {
-    flex: 1;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-  }
+  .transport-main { min-width: 0; flex: 1; }
+  .transport-song { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; font-weight: 700; }
+  .transport-progress { height: 22px; display: flex; align-items: center; cursor: pointer; }
+  .bar-track { position: relative; width: 100%; height: 6px; border-radius: 6px; background: var(--fader-track); }
+  .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+  .bar-marker { position: absolute; top: -2px; width: 2px; height: 10px; border-radius: 2px; background: var(--vu-yellow); }
+  .transport-time { color: var(--text-secondary); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
 
-  .bar-track {
-    width: 100%;
-    height: 8px;
-    background: var(--fader-track);
-    border-radius: 4px;
-    position: relative;
-    overflow: visible;
-  }
+  .master-control { width: 96px; display: grid; gap: 3px; flex-shrink: 0; color: var(--text-secondary); font-size: 0.68rem; }
+  .master-control strong { color: var(--text-primary); font-size: 0.7rem; font-weight: 600; }
+  .master-control input { width: 100%; }
 
-  .bar-fill {
-    height: 100%;
-    background: var(--accent);
-    border-radius: 4px;
-    transition: width 0.1s;
-  }
-
-  .bar-marker {
-    position: absolute;
-    top: -4px;
-    width: 3px;
-    height: 16px;
-    background: var(--vu-yellow);
-    border-radius: 2px;
-    transform: translateX(-50%);
-    cursor: pointer;
-    z-index: 1;
-    border: none;
-    padding: 0;
-  }
-
-  .transport-time {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    min-width: 48px;
-    text-align: right;
+  @media (max-width: 380px) {
+    .master-control { width: 78px; }
+    .transport { gap: 7px; padding-left: 8px; padding-right: 8px; }
   }
 </style>

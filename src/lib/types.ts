@@ -16,7 +16,7 @@ export interface ConcertManifest {
 }
 
 export interface MixState {
-  volume: number   // 0..1, default 0.8
+  volume: number   // linear gain: 0 = -∞ dB, 1 = 0 dB, 3.16 = +10 dB
   pan: number      // -1..1, default 0
   mute: boolean    // default false
   solo: boolean    // default false

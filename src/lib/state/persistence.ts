@@ -22,7 +22,7 @@ export async function isStored(): Promise<boolean> {
 
 function defaultMixState(defaultPan = 0): MixState {
   const pan = Number.isFinite(defaultPan) ? Math.max(-1, Math.min(1, defaultPan)) : 0
-  return { volume: 0.8, pan, mute: false, solo: false }
+  return { volume: 1, pan, mute: false, solo: false }
 }
 
 function buildConcertState(manifest: ConcertManifest | null, trackCount: number): ConcertState {
@@ -32,7 +32,7 @@ function buildConcertState(manifest: ConcertManifest | null, trackCount: number)
   for (let i = 0; i < totalTracks; i++) {
     mixTracks.push(defaultMixState(trackDefs[i]?.defaultPan))
   }
-  return { manifest, tracks: mixTracks, masterVolume: 0.8 }
+  return { manifest, tracks: mixTracks, masterVolume: 1 }
 }
 
 export async function loadAudio(buffer: ArrayBuffer): Promise<void> {
@@ -83,7 +83,7 @@ export async function loadConcert(
 
   let concert: ConcertState
   try {
-    const storedMix = await db.get(STORE_NAME, 'mix')
+    const storedMix = await db.get(STORE_NAME, 'mix-v2')
     if (storedMix?.tracks && storedMix.tracks.length > 0) {
       concert = storedMix as ConcertState
       concert.manifest = resolvedManifest ?? concert.manifest ?? null
@@ -108,5 +108,5 @@ export async function loadConcert(
 
 export async function saveMix(concert: ConcertState): Promise<void> {
   const db = await dbPromise()
-  await db.put(STORE_NAME, concert, 'mix')
+  await db.put(STORE_NAME, concert, 'mix-v2')
 }

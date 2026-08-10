@@ -8,6 +8,8 @@ export const duration = writable(0)
 export const playing = writable(false)
 export const trackCount = writable(0)
 export const ready = writable(false)
+export const mixReset = writable(0)
+export const masterVolume = writable(1)
 
 function createEngine(): AudioEngine {
   engine = new AudioEngine()
@@ -42,16 +44,23 @@ export async function seek(time: number) {
   playing.set(engine.isPlaying())
 }
 
-export function setMasterVolume(v: number) { engine?.setMasterVolume(v) }
+export function setMasterVolume(v: number) {
+  engine?.setMasterVolume(v)
+  masterVolume.set(v)
+}
 export function setTrackVolume(ch: number, v: number) { engine?.setTrackVolume(ch, v) }
 export function setTrackPan(ch: number, pan: number) { engine?.setTrackPan(ch, pan) }
 export function setTrackMute(ch: number, mute: boolean) { engine?.setTrackMute(ch, mute) }
 export function setTrackSolo(ch: number, solo: boolean) { engine?.setTrackSolo(ch, solo) }
-export function resetMix() { engine?.resetMix() }
+export function resetMix() {
+  engine?.resetMix()
+  masterVolume.set(1)
+  mixReset.update(value => value + 1)
+}
 
 export function getTrackLevel(ch: number): number { return engine?.getTrackLevel(ch) ?? 0 }
 export function getMasterLevel(): number { return engine?.getMasterLevel() ?? 0 }
 export function getTrackCount(): number { return engine?.getTrackCount() ?? 0 }
-export function getMasterVolume(): number { return engine?.getMasterVolume() ?? 0.8 }
+export function getMasterVolume(): number { return engine?.getMasterVolume() ?? 1 }
 export function getMixState() { return engine?.getMixState() ?? [] }
 export function getTrackDefs(): TrackDef[] { return engine?.getTrackDefs() ?? [] }
