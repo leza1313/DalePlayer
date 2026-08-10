@@ -10,6 +10,7 @@ export const trackCount = writable(0)
 export const ready = writable(false)
 export const mixReset = writable(0)
 export const masterVolume = writable(1)
+export const focusTrack = writable(-1)
 
 function createEngine(): AudioEngine {
   engine = new AudioEngine()
@@ -22,6 +23,7 @@ export async function initPlayer(file: ArrayBuffer, tracks?: TrackDef[]): Promis
   const eng = createEngine()
   await eng.init(file, tracks)
   trackCount.set(eng.getTrackCount())
+  focusTrack.set(-1)
   ready.set(true)
   return eng
 }
@@ -52,9 +54,14 @@ export function setTrackVolume(ch: number, v: number) { engine?.setTrackVolume(c
 export function setTrackPan(ch: number, pan: number) { engine?.setTrackPan(ch, pan) }
 export function setTrackMute(ch: number, mute: boolean) { engine?.setTrackMute(ch, mute) }
 export function setTrackSolo(ch: number, solo: boolean) { engine?.setTrackSolo(ch, solo) }
+export function setTrackFocus(ch: number, focus: boolean) {
+  engine?.setTrackFocus(ch, focus)
+  focusTrack.set(engine?.getFocusTrack() ?? -1)
+}
 export function resetMix() {
   engine?.resetMix()
   masterVolume.set(1)
+  focusTrack.set(-1)
   mixReset.update(value => value + 1)
 }
 

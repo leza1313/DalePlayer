@@ -5,8 +5,8 @@
   import { appState } from '../state/app.svelte'
   import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
   import {
-    getMixState, getTrackLevel, mixReset, setTrackMute, setTrackPan,
-    setTrackSolo, setTrackVolume
+    focusTrack, getMixState, getTrackLevel, mixReset, setTrackFocus,
+    setTrackMute, setTrackPan, setTrackSolo, setTrackVolume
   } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
 
@@ -14,6 +14,7 @@
   $: track = concert?.manifest?.tracks[index]
   $: name = track?.name ?? `Canal ${index + 1}`
   $: isMono = (track?.channels.length ?? 1) === 1
+  $: focused = $focusTrack === index
   $: panText = panSliderValue === 0
     ? 'Centro'
     : `${panSliderValue < 0 ? 'I' : 'D'} ${Math.round(Math.abs(panSliderValue) * 100)}`
@@ -93,6 +94,10 @@
     scheduleMixSave()
   }
 
+  function toggleFocus() {
+    setTrackFocus(index, !focused)
+  }
+
 </script>
 
 <article class="channel-card" class:expanded>
@@ -106,6 +111,7 @@
   <div class="quick-controls">
     <button class="toggle mute" class:active={muted} on:click={toggleMute} aria-pressed={muted}>M <span>Mute</span></button>
     <button class="toggle solo" class:active={solo} on:click={toggleSolo} aria-pressed={solo}>S <span>Solo</span></button>
+    <button class="toggle focus" class:active={focused} on:click={toggleFocus} aria-pressed={focused} title="Focus: bajar el resto 8 dB">F <span>Focus</span></button>
     <div class="meter" class:warn={level > 0.7} class:clip={level > 0.9} aria-label="Nivel">
       <div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div>
     </div>
@@ -145,6 +151,7 @@
   .toggle span { margin-left: 3px; font-size: 0.62rem; font-weight: 500; }
   .toggle.active.mute { background: #8c3e42; border-color: #bd4b4b; color: #fff; }
   .toggle.active.solo { background: #b88b2d; border-color: var(--vu-yellow); color: #171717; }
+  .toggle.active.focus { background: #4c7b72; border-color: var(--vu-green); color: #fff; }
   .meter { height: 7px; flex: 1; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.04); border-radius: 7px; background: #11161a; }
   .meter-fill { height: 100%; border-radius: inherit; background: var(--vu-green); transition: width 0.07s; }
   .meter.warn .meter-fill { background: var(--vu-yellow); }

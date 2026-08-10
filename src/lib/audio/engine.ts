@@ -17,6 +17,7 @@ type DurationCallback = (durationSeconds: number) => void
 
 interface MixStrip {
   gain: GainNode
+  focusGain: GainNode
   panner: StereoPannerNode | null
   muteGate: GainNode
   analyser: AnalyserNode
@@ -38,6 +39,7 @@ export class AudioEngine {
   private muted: boolean[] = []
   private volumes: number[] = []
   private pans: number[] = []
+  private focusTrack = -1
   private trackDefs: TrackDef[] = []
   private trackCount = 0
   private onPositionCallback: PositionCallback | null = null
@@ -145,6 +147,15 @@ export class AudioEngine {
     }
   }
 
+  setTrackFocus(trackIdx: number, focus: boolean): void {
+    if (focus && trackIdx >= 0 && trackIdx < this.trackCount) {
+      this.focusTrack = trackIdx
+    } else if (!focus && this.focusTrack === trackIdx) {
+      this.focusTrack = -1
+    }
+    this.applyFocus()
+  }
+
   resetMix(): void {
     for (let i = 0; i < this.trackCount; i++) {
       this.volumes[i] = 1
@@ -156,6 +167,7 @@ export class AudioEngine {
         this.strips[i].panner?.pan.setValueAtTime(0, this.ctx?.currentTime ?? 0)
       }
     }
+    this.focusTrack = -1
     this.applyMuteSolo()
     if (this.masterGain) this.masterGain.gain.value = 1
   }
@@ -176,6 +188,8 @@ export class AudioEngine {
   getMasterVolume(): number {
     return this.masterGain?.gain.value ?? 1
   }
+
+  getFocusTrack(): number { return this.focusTrack }
 
   getTrackLevel(trackIdx: number): number {
     if (trackIdx >= this.strips.length || !this.strips[trackIdx]) return 0
@@ -212,6 +226,13 @@ export class AudioEngine {
     const anySolo = this.solo.some(s => s)
     for (let i = 0; i < this.strips.length && i < this.trackCount; i++) {
       this.strips[i].muteGate.gain.value = anySolo ? (this.solo[i] ? 1 : 0) : (this.muted[i] ? 0 : 1)
+    }
+  }
+
+  private applyFocus(): void {
+    const focusGain = Math.pow(10, -18 / 20)
+    for (let i = 0; i < this.strips.length && i < this.trackCount; i++) {
+      this.strips[i].focusGain.gain.value = this.focusTrack >= 0 && i !== this.focusTrack ? focusGain : 1
     }
   }
 
@@ -293,6 +314,9 @@ export class AudioEngine {
       const gain = this.ctx.createGain()
       gain.gain.value = this.volumes[i] ?? 1
 
+      const focusGain = this.ctx.createGain()
+      focusGain.gain.value = 1
+
       const isMono = this.trackDefs[i]?.channels.length === 1
       const panner = isMono ? this.ctx.createStereoPanner() : null
       if (panner) panner.pan.value = this.pans[i] ?? 0
@@ -304,16 +328,19 @@ export class AudioEngine {
       analyser.fftSize = 256
 
       if (panner) {
-        gain.connect(panner)
+        gain.connect(focusGain)
+        focusGain.connect(panner)
         panner.connect(muteGate)
       } else {
-        gain.connect(muteGate)
+        gain.connect(focusGain)
+        focusGain.connect(muteGate)
       }
       muteGate.connect(analyser)
       analyser.connect(this.masterGain)
 
-      this.strips.push({ gain, panner, muteGate, analyser })
+      this.strips.push({ gain, focusGain, panner, muteGate, analyser })
     }
+    this.applyFocus()
   }
 
   private stopSources(): void {
