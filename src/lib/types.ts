@@ -2,6 +2,7 @@ export interface TrackDef {
   name: string
   channels: number[]
   defaultPan?: number // -1..1, only used when creating a mix for the first time
+  defaultVolume?: number // linear gain, only used when creating a mix for the first time
 }
 
 export interface Marker {

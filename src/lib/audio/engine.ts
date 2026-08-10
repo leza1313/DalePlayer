@@ -11,6 +11,7 @@ export interface TrackDef {
   name: string
   channels: number[]  // raw channel indices
   defaultPan?: number
+  defaultVolume?: number
 }
 
 type PositionCallback = (timeSeconds: number) => void
@@ -187,13 +188,15 @@ export class AudioEngine {
 
   resetMix(): void {
     for (let i = 0; i < this.trackCount; i++) {
-      this.volumes[i] = 1
-      this.pans[i] = 0
+      const defaultVolume = this.trackDefs[i]?.defaultVolume
+      const defaultPan = this.trackDefs[i]?.defaultPan
+      this.volumes[i] = Number.isFinite(defaultVolume) ? Math.max(0, Math.min(3.1623, defaultVolume!)) : 1
+      this.pans[i] = Number.isFinite(defaultPan) ? Math.max(-1, Math.min(1, defaultPan!)) : 0
       this.muted[i] = false
       this.solo[i] = false
       if (i < this.strips.length) {
-        this.strips[i].gain.gain.value = 1
-        this.strips[i].panner?.pan.setValueAtTime(0, this.ctx?.currentTime ?? 0)
+        this.strips[i].gain.gain.value = this.volumes[i]
+        this.strips[i].panner?.pan.setValueAtTime(this.pans[i], this.ctx?.currentTime ?? 0)
       }
     }
     this.focusTrack = -1

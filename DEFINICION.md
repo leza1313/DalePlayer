@@ -32,8 +32,8 @@ completo con control individual sobre cada instrumento, para centrarse en su pro
 - Solo (lógica estándar: si hay algún solo activo, suena solo lo seleccionado).
 - VU-metro de nivel.
 - **Master:** fader general.
-- **Botón "Restablecer mezcla":** vuelve a valores por defecto (faders a 0 dB, pan centrado,
-  sin mute/solo).
+- **Botón "Restablecer mezcla":** vuelve a los valores `defaultVolume` y `defaultPan` del
+  manifiesto, sin mute/solo.
 
 ### 3.3 Marcadores de canciones (solo lectura)
 - Definidos por el administrador en un **manifiesto JSON** que acompaña al archivo de audio.
@@ -82,6 +82,7 @@ completo con control individual sobre cada instrumento, para centrarse en su pro
 ```
 - `tracks[].channels`: 1 canal = pista mono, 2 canales = pista estéreo.
 - `tracks[].defaultPan`: paneo inicial opcional entre -1 (izquierda) y 1 (derecha). Solo se usa al crear la mezcla por primera vez.
+- `tracks[].defaultVolume`: volumen inicial opcional como ganancia lineal. `1` equivale a 0 dB y solo se usa al crear la mezcla por primera vez.
 - `markers[].time`: segundos desde el inicio.
 - Sin manifiesto: nombres por defecto (Canal 1..N) y sin marcadores.
 

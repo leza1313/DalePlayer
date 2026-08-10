@@ -68,6 +68,7 @@ La app carga automáticamente `public/concert.json` como manifiesto del conciert
 
 - `tracks[].channels`: array de índices de canal. **1 elemento = pista mono, 2 = estéreo.**
 - `tracks[].defaultPan`: paneo inicial opcional entre `-1` (izquierda) y `1` (derecha). Solo se aplica si todavía no existe una mezcla guardada; los cambios del usuario se conservan.
+- `tracks[].defaultVolume`: volumen inicial opcional como ganancia lineal (`1` = 0 dB, `0.5` ≈ -6 dB, `0` = silencio, hasta `3.1623` = +10 dB). Solo se aplica si todavía no existe una mezcla guardada.
 - `markers[].time`: segundos desde el inicio de la canción dentro del concierto.
 - Si no hay manifiesto, las pistas se muestran como "Canal 1".."Canal N" sin marcadores.
 

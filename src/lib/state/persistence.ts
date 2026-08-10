@@ -47,9 +47,10 @@ export async function isStored(): Promise<boolean> {
   return true
 }
 
-function defaultMixState(defaultPan = 0): MixState {
+function defaultMixState(defaultPan = 0, defaultVolume = 1): MixState {
   const pan = Number.isFinite(defaultPan) ? Math.max(-1, Math.min(1, defaultPan)) : 0
-  return { volume: 1, pan, mute: false, solo: false }
+  const volume = Number.isFinite(defaultVolume) ? Math.max(0, Math.min(3.1623, defaultVolume)) : 1
+  return { volume, pan, mute: false, solo: false }
 }
 
 function buildConcertState(manifest: ConcertManifest | null, trackCount: number): ConcertState {
@@ -57,7 +58,7 @@ function buildConcertState(manifest: ConcertManifest | null, trackCount: number)
   const totalTracks = trackDefs.length > 0 ? trackDefs.length : trackCount
   const mixTracks: MixState[] = []
   for (let i = 0; i < totalTracks; i++) {
-    mixTracks.push(defaultMixState(trackDefs[i]?.defaultPan))
+    mixTracks.push(defaultMixState(trackDefs[i]?.defaultPan, trackDefs[i]?.defaultVolume))
   }
   return { manifest, tracks: mixTracks, masterVolume: 1 }
 }
@@ -187,7 +188,8 @@ export async function loadConcert(
       if (concert.tracks.length < expectedTracks) {
         while (concert.tracks.length < expectedTracks) {
           const trackIndex = concert.tracks.length
-          concert.tracks.push(defaultMixState(resolvedManifest?.tracks?.[trackIndex]?.defaultPan))
+          const track = resolvedManifest?.tracks?.[trackIndex]
+          concert.tracks.push(defaultMixState(track?.defaultPan, track?.defaultVolume))
         }
       } else if (concert.tracks.length > expectedTracks) {
         concert.tracks = concert.tracks.slice(0, expectedTracks)
