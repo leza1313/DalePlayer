@@ -14,6 +14,7 @@ export interface TrackDef {
 
 type PositionCallback = (timeSeconds: number) => void
 type DurationCallback = (durationSeconds: number) => void
+type PlayingCallback = (playing: boolean) => void
 
 interface MixStrip {
   gain: GainNode
@@ -44,11 +45,13 @@ export class AudioEngine {
   private trackCount = 0
   private onPositionCallback: PositionCallback | null = null
   private onDurationCallback: DurationCallback | null = null
+  private onPlayingCallback: PlayingCallback | null = null
   private positionInterval: ReturnType<typeof setInterval> | null = null
   private scheduledCount = 0
 
   onPositionUpdate(cb: PositionCallback) { this.onPositionCallback = cb }
   onDurationUpdate(cb: DurationCallback) { this.onDurationCallback = cb }
+  onPlayingUpdate(cb: PlayingCallback) { this.onPlayingCallback = cb }
 
   async init(file: ArrayBuffer, tracks?: TrackDef[]): Promise<void> {
     this.client = new DecoderClient()
@@ -91,6 +94,7 @@ export class AudioEngine {
     if (!this.ready || !this.client || !this.ctx) return
     if (from !== undefined) this.playPosition = from
     this.playing = true
+    this.onPlayingCallback?.(true)
     this.scheduledCount = 0
     await this.requestAndSchedule(5)
     this.startPositionUpdates()
@@ -98,6 +102,7 @@ export class AudioEngine {
 
   pause(): void {
     this.playing = false
+    this.onPlayingCallback?.(false)
     this.stopSources()
     this.stopPositionUpdates()
   }

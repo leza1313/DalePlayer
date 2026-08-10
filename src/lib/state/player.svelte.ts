@@ -16,6 +16,7 @@ function createEngine(): AudioEngine {
   engine = new AudioEngine()
   engine.onPositionUpdate((t) => position.set(t))
   engine.onDurationUpdate((d) => duration.set(d))
+  engine.onPlayingUpdate((isPlaying) => playing.set(isPlaying))
   return engine
 }
 
