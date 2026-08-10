@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store'
-import { AudioEngine, type TrackDef } from '../audio/engine'
+import { AudioEngine, type MeterLevel, type TrackDef } from '../audio/engine'
 import type { AudioSourceDescriptor } from '../audio/source'
 
 let engine: AudioEngine | null = null
@@ -80,6 +80,8 @@ export function resetMix() {
 
 export function getTrackLevel(ch: number): number { return engine?.getTrackLevel(ch) ?? 0 }
 export function getMasterLevel(): number { return engine?.getMasterLevel() ?? 0 }
+export function getTrackMeter(ch: number): MeterLevel { return engine?.getTrackMeter(ch) ?? { level: 0, peak: 0 } }
+export function getMasterMeter(): MeterLevel { return engine?.getMasterMeter() ?? { level: 0, peak: 0 } }
 export function getTrackCount(): number { return engine?.getTrackCount() ?? 0 }
 export function getMasterVolume(): number { return engine?.getMasterVolume() ?? 1 }
 export function getMixState() { return engine?.getMixState() ?? [] }

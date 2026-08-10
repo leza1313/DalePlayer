@@ -5,7 +5,7 @@
   import { appState } from '../state/app.svelte'
   import { dbToGain, dbToSlider, formatDb, gainToDb, snapPanValue, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
   import {
-    focusTrack, getMixState, getTrackLevel, mixReset, setTrackFocus,
+    focusTrack, getMixState, getTrackMeter, mixReset, setTrackFocus,
     setTrackMute, setTrackPan, setTrackSolo, setTrackVolume
   } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
@@ -28,6 +28,7 @@
   let muted = false
   let solo = false
   let level = 0
+  let peak = 0
   let expanded = false
   let resetVersion = 0
   let vuInterval: ReturnType<typeof setInterval> | null = null
@@ -57,7 +58,11 @@
       muted = stored.mute
       solo = stored.solo
     }
-    vuInterval = setInterval(() => { level = getTrackLevel(index) }, 70)
+    vuInterval = setInterval(() => {
+      const meter = getTrackMeter(index)
+      level = meter.level
+      peak = meter.peak
+    }, 70)
   })
 
   onDestroy(() => {
@@ -126,7 +131,7 @@
     <button class="toggle mute" class:active={muted} on:click={toggleMute} aria-pressed={muted}>M <span>Mute</span></button>
     <button class="toggle solo" class:active={solo} on:click={toggleSolo} aria-pressed={solo}>S <span>Solo</span></button>
     <button class="toggle focus" class:active={focused} on:click={toggleFocus} aria-pressed={focused} title="Focus: bajar el resto 8 dB">F <span>Focus</span></button>
-    <div class="meter" class:warn={level > 0.7} class:clip={level > 0.9} aria-label="Nivel">
+    <div class="meter" class:warn={level > 0.75} class:clip={peak > 0.9375} aria-label="Nivel">
       <div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div>
     </div>
   </div>

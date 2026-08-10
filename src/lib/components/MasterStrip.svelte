@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
   import { dbToSlider, formatDb, gainToDb, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
-  import { getMasterLevel, masterVolume as masterVolumeState, resetMix, setMasterVolume } from '../state/player.svelte'
+  import { getMasterMeter, masterVolume as masterVolumeState, resetMix, setMasterVolume } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
 
   let masterVolume = 1
@@ -10,12 +10,17 @@
   let volumeReferenceLocked = false
   $: masterVolume = $masterVolumeState
   let level = 0
+  let peak = 0
   let confirmReset = false
   let vuInterval: ReturnType<typeof setInterval> | null = null
 
   onMount(() => {
     setMasterVolume($appState.concert?.masterVolume ?? 1)
-    vuInterval = setInterval(() => { level = getMasterLevel() }, 70)
+    vuInterval = setInterval(() => {
+      const meter = getMasterMeter()
+      level = meter.level
+      peak = meter.peak
+    }, 70)
     return () => { if (vuInterval !== null) clearInterval(vuInterval) }
   })
 
@@ -50,7 +55,7 @@
   </span>
   <div class="scale"><span>-∞</span><span>0 dB</span><span>+10 dB</span></div>
   <div class="master-footer">
-    <div class="meter" class:warn={level > 0.7} class:clip={level > 0.9}><div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div></div>
+    <div class="meter" class:warn={level > 0.75} class:clip={peak > 0.9375}><div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div></div>
     <button class="reset-button" class:confirm={confirmReset} on:click={handleReset}>
       {confirmReset ? 'Confirmar reset' : 'Restablecer mezcla'}
     </button>

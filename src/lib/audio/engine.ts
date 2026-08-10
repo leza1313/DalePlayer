@@ -26,6 +26,15 @@ interface MixStrip {
   analyser: AnalyserNode
 }
 
+export interface MeterLevel {
+  level: number
+  peak: number
+}
+
+const METER_FLOOR_DB = -48
+const METER_ATTACK_SECONDS = 0.07
+const METER_RELEASE_SECONDS = 0.25
+
 export class AudioEngine {
   private ctx: AudioContext | null = null
   private client: DecoderClient | null = null
@@ -45,6 +54,10 @@ export class AudioEngine {
   private focusTrack = -1
   private trackDefs: TrackDef[] = []
   private trackCount = 0
+  private trackMeterLevels: number[] = []
+  private trackMeterPeaks: number[] = []
+  private masterMeterLevel = 0
+  private masterMeterPeak = 0
   private onPositionCallback: PositionCallback | null = null
   private onDurationCallback: DurationCallback | null = null
   private onPlayingCallback: PlayingCallback | null = null
@@ -79,6 +92,10 @@ export class AudioEngine {
     this.muted = new Array(this.trackCount).fill(false)
     this.volumes = new Array(this.trackCount).fill(1)
     this.pans = new Array(this.trackCount).fill(0)
+    this.trackMeterLevels = new Array(this.trackCount).fill(0)
+    this.trackMeterPeaks = new Array(this.trackCount).fill(0)
+    this.masterMeterLevel = 0
+    this.masterMeterPeak = 0
     this.ready = true
     this.onDurationCallback?.(this.duration)
   }
@@ -199,29 +216,51 @@ export class AudioEngine {
 
   getFocusTrack(): number { return this.focusTrack }
 
-  getTrackLevel(trackIdx: number): number {
-    if (trackIdx >= this.strips.length || !this.strips[trackIdx]) return 0
-    const analyser = this.strips[trackIdx].analyser
-    const data = new Uint8Array(analyser.fftSize)
-    analyser.getByteTimeDomainData(data)
-    let peak = 0
-    for (let i = 0; i < data.length; i++) {
-      const v = Math.abs((data[i] - 128) / 128)
-      if (v > peak) peak = v
-    }
-    return peak
+  getTrackMeter(trackIdx: number): MeterLevel {
+    if (trackIdx >= this.strips.length || !this.strips[trackIdx]) return { level: 0, peak: 0 }
+    const meter = this.readMeter(this.strips[trackIdx].analyser)
+    this.trackMeterLevels[trackIdx] = this.smoothMeter(this.trackMeterLevels[trackIdx] ?? 0, meter.level)
+    this.trackMeterPeaks[trackIdx] = this.smoothMeter(this.trackMeterPeaks[trackIdx] ?? 0, meter.peak)
+    return { level: this.trackMeterLevels[trackIdx], peak: this.trackMeterPeaks[trackIdx] }
   }
 
-  getMasterLevel(): number {
-    if (!this.masterAnalyser) return 0
-    const data = new Uint8Array(this.masterAnalyser.fftSize)
-    this.masterAnalyser.getByteTimeDomainData(data)
+  getTrackLevel(trackIdx: number): number { return this.getTrackMeter(trackIdx).level }
+
+  getMasterMeter(): MeterLevel {
+    if (!this.masterAnalyser) return { level: 0, peak: 0 }
+    const meter = this.readMeter(this.masterAnalyser)
+    this.masterMeterLevel = this.smoothMeter(this.masterMeterLevel, meter.level)
+    this.masterMeterPeak = this.smoothMeter(this.masterMeterPeak, meter.peak)
+    return { level: this.masterMeterLevel, peak: this.masterMeterPeak }
+  }
+
+  getMasterLevel(): number { return this.getMasterMeter().level }
+
+  private readMeter(analyser: AnalyserNode): MeterLevel {
+    const data = new Uint8Array(analyser.fftSize)
+    analyser.getByteTimeDomainData(data)
+    let sumSquares = 0
     let peak = 0
     for (let i = 0; i < data.length; i++) {
-      const v = Math.abs((data[i] - 128) / 128)
-      if (v > peak) peak = v
+      const value = (data[i] - 128) / 128
+      const magnitude = Math.abs(value)
+      sumSquares += value * value
+      if (magnitude > peak) peak = magnitude
     }
-    return peak
+    const rms = Math.sqrt(sumSquares / data.length)
+    return { level: this.dbToMeter(rms), peak: this.dbToMeter(peak) }
+  }
+
+  private dbToMeter(amplitude: number): number {
+    if (amplitude <= 0) return 0
+    const db = 20 * Math.log10(amplitude)
+    return Math.max(0, Math.min(1, (db - METER_FLOOR_DB) / -METER_FLOOR_DB))
+  }
+
+  private smoothMeter(current: number, target: number): number {
+    const timeConstant = target > current ? METER_ATTACK_SECONDS : METER_RELEASE_SECONDS
+    const amount = 1 - Math.exp(-0.07 / timeConstant)
+    return current + (target - current) * amount
   }
 
   getTrackCount(): number { return this.trackCount }
@@ -322,12 +361,16 @@ export class AudioEngine {
   private rebuildGraph(): void {
     if (!this.ctx) return
     this.strips = []
+    this.trackMeterLevels = new Array(this.trackCount).fill(0)
+    this.trackMeterPeaks = new Array(this.trackCount).fill(0)
+    this.masterMeterLevel = 0
+    this.masterMeterPeak = 0
 
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 1
 
     this.masterAnalyser = this.ctx.createAnalyser()
-    this.masterAnalyser.fftSize = 256
+    this.masterAnalyser.fftSize = 1024
     this.masterGain.connect(this.masterAnalyser)
     this.masterAnalyser.connect(this.ctx.destination)
 
@@ -346,7 +389,7 @@ export class AudioEngine {
       muteGate.gain.value = 1
 
       const analyser = this.ctx.createAnalyser()
-      analyser.fftSize = 256
+      analyser.fftSize = 1024
 
       if (panner) {
         gain.connect(focusGain)
