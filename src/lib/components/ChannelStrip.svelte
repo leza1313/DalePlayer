@@ -105,7 +105,11 @@
     <span class="channel-name">{name}</span>
     <span class="summary-volume">{formatDb(volume)}</span>
     <span class="summary-pan">{isMono ? panText : 'Estéreo'}</span>
-    <span class="chevron">{expanded ? '⌃' : '⌄'}</span>
+    <span class="chevron" aria-hidden="true">
+      <svg viewBox="0 0 16 16" focusable="false">
+        <path d="M3 6l5 5 5-5" />
+      </svg>
+    </span>
   </button>
 
   <div class="quick-controls">
@@ -144,8 +148,10 @@
   .channel-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; letter-spacing: 0.01em; }
   .summary-volume, .summary-pan { color: var(--text-secondary); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
   .summary-volume { color: #dfc47f; }
-  .chevron { color: var(--accent); font-size: 1.05rem; transition: transform 180ms ease, color 180ms ease; }
-  .channel-card.expanded .chevron { transform: rotate(180deg); color: var(--accent-hover); }
+  .chevron { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); transition: color 180ms ease; }
+  .chevron svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; transition: transform 180ms ease; }
+  .channel-card.expanded .chevron { color: var(--accent-hover); }
+  .channel-card.expanded .chevron svg { transform: rotate(180deg); }
   .quick-controls { display: flex; align-items: center; gap: 8px; padding: 3px 13px 12px; }
   .toggle { min-height: 36px; min-width: 58px; border: 1px solid transparent; border-radius: 7px; background: #2b3239; color: var(--text-secondary); font-size: 0.75rem; font-weight: 800; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; }
   .toggle span { margin-left: 3px; font-size: 0.62rem; font-weight: 500; }
