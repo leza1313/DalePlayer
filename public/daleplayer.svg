@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title">
+  <title>DalePlayer</title>
+  <rect width="100" height="100" rx="24" fill="#101318"/>
+  <circle cx="50" cy="50" r="35" fill="#1d232a" stroke="#b88624" stroke-width="3"/>
+  <path d="M43 33v34l28-17z" fill="#d19d32"/>
+  <path d="M28 29v42M72 29v42" fill="none" stroke="#4a5054" stroke-linecap="round" stroke-width="2"/>
+</svg>

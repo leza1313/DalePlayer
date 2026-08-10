@@ -2,15 +2,15 @@
   "name": "DalePlayer",
   "short_name": "DalePlayer",
   "description": "Mezclador multipista offline para musicos sustitutos",
-  "theme_color": "#1a1a2e",
-  "background_color": "#1a1a2e",
+  "theme_color": "#101318",
+  "background_color": "#101318",
   "display": "standalone",
   "orientation": "any",
   "start_url": "./",
   "scope": "./",
   "icons": [
     {
-      "src": "vite.svg",
+      "src": "daleplayer.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
