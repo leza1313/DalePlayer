@@ -10,10 +10,12 @@
 
 <section class="mixer-view">
   <header class="mixer-header">
-    <button class="back-button" on:click={() => dispatch('closeMixer')}>‹ Setlist</button>
-    <div>
-      <p class="eyebrow">Preparar mezcla</p>
-      <h1>Mezclador</h1>
+    <div class="mixer-header-inner">
+      <button class="back-button" on:click={() => dispatch('closeMixer')}>‹ Setlist</button>
+      <div>
+        <p class="eyebrow">Preparar mezcla</p>
+        <h1>Mezclador</h1>
+      </div>
     </div>
   </header>
 
@@ -28,8 +30,9 @@
 </section>
 
 <style>
-  .mixer-view { flex: 1; min-height: 0; overflow-y: auto; padding: 17px 12px 26px; background: radial-gradient(circle at 80% 0%, rgba(184, 134, 36, 0.07), transparent 34%); }
-  .mixer-header { max-width: 720px; margin: 0 auto 18px; display: flex; align-items: center; gap: 15px; }
+  .mixer-view { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 26px; background: radial-gradient(circle at 80% 0%, rgba(184, 134, 36, 0.07), transparent 34%); }
+  .mixer-header { position: sticky; top: 0; z-index: 2; margin: 0 -12px 18px; padding: 17px 12px 12px; background: var(--bg-primary); border-bottom: 1px solid rgba(48, 55, 62, 0.8); }
+  .mixer-header-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 15px; }
   .back-button { min-height: 42px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: #d4b968; font-size: 0.78rem; font-weight: 700; }
   .back-button:active { background: var(--accent-soft); border-color: var(--accent); }
   .eyebrow { color: #c39a43; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 3px; }

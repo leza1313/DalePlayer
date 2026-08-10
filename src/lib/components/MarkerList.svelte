@@ -26,11 +26,13 @@
 
 <section class="rehearsal-view">
   <header class="rehearsal-header">
-    <div>
-      <p class="eyebrow">Ensayo</p>
-      <h1>{$appState.concert?.manifest?.title ?? 'Setlist'}</h1>
+    <div class="rehearsal-header-inner">
+      <div>
+        <p class="eyebrow">Ensayo</p>
+        <h1>{$appState.concert?.manifest?.title ?? 'Setlist'}</h1>
+      </div>
+      <button class="mixer-button" on:click={() => dispatch('openMixer')}>Mezclador</button>
     </div>
-    <button class="mixer-button" on:click={() => dispatch('openMixer')}>Mezclador</button>
   </header>
 
   {#if markers.length > 0}
@@ -65,17 +67,27 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 22px 16px 26px;
+    padding: 0 16px 26px;
     background: radial-gradient(circle at 15% 0%, rgba(184, 134, 36, 0.08), transparent 34%);
   }
 
   .rehearsal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: 0 -16px 22px;
+    padding: 22px 16px 12px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid rgba(48, 55, 62, 0.8);
+  }
+
+  .rehearsal-header-inner {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
     max-width: 720px;
-    margin: 0 auto 22px;
+    margin: 0 auto;
   }
 
   .eyebrow {
