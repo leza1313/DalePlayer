@@ -18,9 +18,22 @@
     { "name": "Ordenes", "channels": [17] }
   ],
   "markers": [
-    { "time": 0,     "name": "Intro" },
-    { "time": 5.0,   "name": "Verso" },
-    { "time": 10.0,  "name": "Coro" },
-    { "time": 14.0,  "name": "Cierre" }
-  ]
+  { "time": 0.997,     "name": "Calle luna" },
+  { "time": 257.620,   "name": "Bilirrubina" },
+  { "time": 452.489,   "name": "Valio la pena" },
+  { "time": 792.942,   "name": "Pedro Navaja" },
+  { "time": 1200.965,  "name": "Bad bunny" },
+  { "time": 1525.331,  "name": "Larrosa morea" },
+  { "time": 1760.917,  "name": "La cueva" },
+  { "time": 2062.057,  "name": "Niagara" },
+  { "time": 2351.847,  "name": "Aurresku" },
+  { "time": 2680.062,  "name": "Tortura" },
+  { "time": 3018.454,  "name": "Marcando la distancia" },
+  { "time": 3325.018,  "name": "Vale la pena" },
+  { "time": 3564.661,  "name": "Mix Celia Cruz" },
+  { "time": 4033.085,  "name": "Mix reggaeton" },
+  { "time": 4476.175,  "name": "Brujeria" },
+  { "time": 4675.823,  "name": "La travesia" },
+  { "time": 5062.259,  "name": "Crazy" }
+]
 }
