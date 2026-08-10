@@ -340,6 +340,7 @@ export class AudioEngine {
 
       this.strips.push({ gain, focusGain, panner, muteGate, analyser })
     }
+    this.applyMuteSolo()
     this.applyFocus()
   }
 
