@@ -7,21 +7,25 @@
 }
 
 :root {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-tertiary: #0f3460;
-  --bg-surface: #1e2a4a;
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0b0;
-  --accent: #e94560;
-  --accent-hover: #ff6b81;
-  --fader-track: #2a2a4a;
-  --fader-fill: #e94560;
-  --vu-green: #4caf84;
+  --bg-primary: #101318;
+  --bg-secondary: #171b21;
+  --bg-tertiary: #252b32;
+  --bg-surface: #1d232a;
+  --bg-surface-raised: #242b33;
+  --text-primary: #eee9dc;
+  --text-secondary: #969b9c;
+  --accent: #b88624;
+  --accent-hover: #d19d32;
+  --accent-soft: rgba(184, 134, 36, 0.16);
+  --fader-track: #343b42;
+  --fader-fill: #b88624;
+  --pan-fill: #aeb4b4;
+  --vu-green: #5c9a7a;
   --vu-yellow: #e9b143;
-  --vu-red: #e94560;
-  --border: #2a2a4a;
-  --radius: 8px;
+  --vu-red: #bd4b4b;
+  --border: #30373e;
+  --border-strong: #4a5054;
+  --radius: 10px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -50,32 +54,43 @@ input[type="range"] {
   appearance: none;
   background: transparent;
   cursor: pointer;
+  accent-color: var(--fader-fill);
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
+  height: 7px;
   background: var(--fader-track);
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--fader-fill);
-  margin-top: -8px;
+  background: #e9d49a;
+  border: 3px solid var(--fader-fill);
+  margin-top: -6px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
 }
 
 input[type="range"]::-moz-range-track {
+  height: 7px;
   background: var(--fader-track);
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--fader-fill);
-  border: none;
+  background: #e9d49a;
+  border: 3px solid var(--fader-fill);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.45);
+}
+
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 4px;
 }

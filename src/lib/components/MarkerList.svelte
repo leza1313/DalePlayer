@@ -65,7 +65,8 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 20px 16px 24px;
+    padding: 22px 16px 26px;
+    background: radial-gradient(circle at 15% 0%, rgba(184, 134, 36, 0.08), transparent 34%);
   }
 
   .rehearsal-header {
@@ -74,11 +75,11 @@
     justify-content: space-between;
     gap: 16px;
     max-width: 720px;
-    margin: 0 auto 24px;
+    margin: 0 auto 22px;
   }
 
   .eyebrow {
-    color: var(--accent);
+    color: #c39a43;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -93,38 +94,41 @@
   }
 
   .mixer-button {
-    min-height: 44px;
+    min-height: 42px;
     padding: 0 14px;
-    border: 1px solid var(--accent);
-    border-radius: 10px;
-    background: transparent;
-    color: var(--text-primary);
+    border: 1px solid rgba(184, 134, 36, 0.65);
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: #e2d4ad;
+    font-size: 0.78rem;
     font-weight: 700;
     white-space: nowrap;
+    transition: background 150ms ease, border-color 150ms ease;
   }
 
-  .mixer-button:active { background: var(--accent); }
+  .mixer-button:active { background: var(--accent); border-color: var(--accent-hover); color: #171717; }
 
   .setlist { max-width: 720px; margin: 0 auto; }
 
   .song-row {
     width: 100%;
-    min-height: 68px;
+    min-height: 70px;
     display: flex;
     align-items: center;
     gap: 14px;
     padding: 12px 14px;
     margin-bottom: 8px;
     border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--bg-surface);
+    border-radius: 10px;
+    background: linear-gradient(105deg, var(--bg-surface), #1a2026);
     color: var(--text-primary);
     text-align: left;
   }
 
   .song-row.current {
-    border-color: var(--accent);
-    background: linear-gradient(90deg, rgba(233, 69, 96, 0.18), var(--bg-surface));
+    border-color: rgba(184, 134, 36, 0.68);
+    background: linear-gradient(90deg, var(--accent-soft), var(--bg-surface));
+    box-shadow: inset 3px 0 0 var(--accent);
   }
 
   .song-index {
@@ -142,7 +146,7 @@
     gap: 3px;
   }
 
-  .song-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+  .song-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; letter-spacing: 0.01em; }
   .song-time { color: var(--text-secondary); font-size: 0.78rem; }
   .playing-indicator { color: var(--accent); font-size: 1.1rem; }
 

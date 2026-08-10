@@ -80,8 +80,9 @@
     align-items: center;
     gap: 10px;
     padding: 10px 12px max(10px, env(safe-area-inset-bottom));
-    background: var(--bg-secondary);
+    background: rgba(23, 27, 33, 0.97);
     border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
     flex-shrink: 0;
   }
 
@@ -91,20 +92,22 @@
     flex-shrink: 0;
     border-radius: 50%;
     background: var(--accent);
+    box-shadow: 0 3px 10px rgba(184, 134, 36, 0.25);
     color: white;
     font-size: 0.95rem;
     font-weight: 700;
   }
 
   .transport-main { min-width: 0; flex: 1; }
-  .transport-song { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; font-weight: 700; }
+  .transport-song { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e2d4ad; font-size: 0.78rem; font-weight: 700; }
   .transport-progress { height: 22px; display: flex; align-items: center; cursor: pointer; }
   .bar-track { position: relative; width: 100%; height: 6px; border-radius: 6px; background: var(--fader-track); }
-  .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+  .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); box-shadow: 0 0 7px rgba(184, 134, 36, 0.35); }
   .bar-marker { position: absolute; top: -2px; width: 2px; height: 10px; border-radius: 2px; background: var(--vu-yellow); }
   .transport-time { color: var(--text-secondary); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
 
   .master-control { width: 96px; display: grid; gap: 3px; flex-shrink: 0; color: var(--text-secondary); font-size: 0.68rem; }
+  .master-control span { color: #c39a43; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
   .master-control strong { color: var(--text-primary); font-size: 0.7rem; font-weight: 600; }
   .master-control input { width: 100%; }
 

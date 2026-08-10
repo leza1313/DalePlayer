@@ -28,10 +28,11 @@
 </section>
 
 <style>
-  .mixer-view { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 12px 24px; }
-  .mixer-header { max-width: 720px; margin: 0 auto 16px; display: flex; align-items: center; gap: 14px; }
-  .back-button { min-height: 44px; padding: 0 4px; background: none; color: var(--accent); font-weight: 700; }
-  .eyebrow { color: var(--accent); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
-  h1 { font-size: 1.35rem; }
+  .mixer-view { flex: 1; min-height: 0; overflow-y: auto; padding: 17px 12px 26px; background: radial-gradient(circle at 80% 0%, rgba(184, 134, 36, 0.07), transparent 34%); }
+  .mixer-header { max-width: 720px; margin: 0 auto 18px; display: flex; align-items: center; gap: 15px; }
+  .back-button { min-height: 42px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-surface); color: #d4b968; font-size: 0.78rem; font-weight: 700; }
+  .back-button:active { background: var(--accent-soft); border-color: var(--accent); }
+  .eyebrow { color: #c39a43; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 3px; }
+  h1 { color: var(--text-primary); font-size: 1.4rem; letter-spacing: -0.02em; }
   .channels-list { max-width: 720px; margin: 0 auto; display: grid; gap: 8px; }
 </style>
