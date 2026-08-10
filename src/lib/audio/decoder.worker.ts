@@ -1,4 +1,5 @@
 import { OpusStreamDecoder } from './decoder'
+import { createAudioSource, type AudioSourceDescriptor } from './source'
 
 let decoder: OpusStreamDecoder | null = null
 let processing = false
@@ -23,7 +24,10 @@ self.onmessage = async (ev: MessageEvent) => {
   try {
     if (msg.type === 'init') {
       decoder = new OpusStreamDecoder()
-      await decoder.init(msg.file)
+      const source = msg.source as AudioSourceDescriptor
+      await decoder.init(createAudioSource(source), (processedBytes, totalBytes) => {
+        self.postMessage({ type: 'progress', reqId, processedBytes, totalBytes })
+      })
       self.postMessage({ type: 'ready', reqId, duration: decoder.duration, channels: decoder.channels })
     }
     else if (msg.type === 'seek') {

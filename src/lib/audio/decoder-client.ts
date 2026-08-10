@@ -1,3 +1,5 @@
+import type { AudioSourceDescriptor } from './source'
+
 interface Chunk {
   channelData: Float32Array[]
   startTime: number
@@ -5,7 +7,7 @@ interface Chunk {
 }
 
 interface WorkerResponse {
-  type: 'ready' | 'chunk' | 'error' | 'freed'
+  type: 'ready' | 'chunk' | 'error' | 'freed' | 'progress'
   reqId: number
   duration?: number
   channels?: number
@@ -14,12 +16,17 @@ interface WorkerResponse {
   sampleRate?: number
   empty?: boolean
   message?: string
+  processedBytes?: number
+  totalBytes?: number
 }
+
+export type DecodeProgressCallback = (processedBytes: number, totalBytes: number) => void
 
 export class DecoderClient {
   private worker: Worker
   private reqCounter = 0
   private pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>()
+  private progressCallback: DecodeProgressCallback | null = null
 
   constructor() {
     this.worker = new Worker(
@@ -30,6 +37,11 @@ export class DecoderClient {
       const msg = ev.data
       const pending = this.pending.get(msg.reqId)
       if (!pending) return
+
+      if (msg.type === 'progress') {
+        this.progressCallback?.(msg.processedBytes ?? 0, msg.totalBytes ?? 0)
+        return
+      }
 
       if (msg.type === 'ready') {
         this.pending.delete(msg.reqId)
@@ -60,11 +72,12 @@ export class DecoderClient {
     }
   }
 
-  init(file: ArrayBuffer): Promise<{ duration: number; channels: number }> {
+  init(source: AudioSourceDescriptor, onProgress?: DecodeProgressCallback): Promise<{ duration: number; channels: number }> {
     const reqId = ++this.reqCounter
+    this.progressCallback = onProgress ?? null
     return new Promise((resolve, reject) => {
       this.pending.set(reqId, { resolve, reject })
-      this.worker.postMessage({ type: 'init', reqId, file }, [file])
+      this.worker.postMessage({ type: 'init', reqId, source })
     })
   }
 
@@ -93,6 +106,7 @@ export class DecoderClient {
   }
 
   terminate(): void {
+    this.progressCallback = null
     this.worker.terminate()
   }
 }

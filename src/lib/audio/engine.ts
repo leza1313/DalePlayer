@@ -1,4 +1,5 @@
 import { DecoderClient } from './decoder-client'
+import type { AudioSourceDescriptor } from './source'
 
 interface Chunk {
   channelData: Float32Array[]
@@ -15,6 +16,7 @@ export interface TrackDef {
 type PositionCallback = (timeSeconds: number) => void
 type DurationCallback = (durationSeconds: number) => void
 type PlayingCallback = (playing: boolean) => void
+type DecodeProgressCallback = (processedBytes: number, totalBytes: number) => void
 
 interface MixStrip {
   gain: GainNode
@@ -32,7 +34,7 @@ export class AudioEngine {
   private playPosition = 0
   private duration = 0
   private scheduledEnd = 0
-  private currentSources: AudioBufferSourceNode[] = []
+  private currentSources = new Set<AudioBufferSourceNode>()
   private masterGain: GainNode | null = null
   private masterAnalyser: AnalyserNode | null = null
   private strips: MixStrip[] = []
@@ -48,14 +50,15 @@ export class AudioEngine {
   private onPlayingCallback: PlayingCallback | null = null
   private positionInterval: ReturnType<typeof setInterval> | null = null
   private scheduledCount = 0
+  private decodeInFlight = false
 
   onPositionUpdate(cb: PositionCallback) { this.onPositionCallback = cb }
   onDurationUpdate(cb: DurationCallback) { this.onDurationCallback = cb }
   onPlayingUpdate(cb: PlayingCallback) { this.onPlayingCallback = cb }
 
-  async init(file: ArrayBuffer, tracks?: TrackDef[]): Promise<void> {
+  async init(source: AudioSourceDescriptor, tracks?: TrackDef[], onProgress?: DecodeProgressCallback): Promise<void> {
     this.client = new DecoderClient()
-    const info = await this.client.init(file)
+    const info = await this.client.init(source, onProgress)
     this.duration = info.duration
 
     this.trackDefs = tracks ?? []
@@ -242,13 +245,24 @@ export class AudioEngine {
   }
 
   private async requestAndSchedule(aheadSeconds: number): Promise<void> {
-    if (!this.client || !this.ctx) return
-    const isSeek = this.scheduledCount === 0
-    const chunk = isSeek
-      ? await this.client.decodeSeek(this.playPosition, aheadSeconds)
-      : await this.client.decodeMore(aheadSeconds)
-    if (!this.playing) return
-    if (chunk) this.scheduleChunk(chunk)
+    if (!this.client || !this.ctx || this.decodeInFlight) return
+    this.decodeInFlight = true
+    try {
+      const isSeek = this.scheduledCount === 0
+      const chunk = isSeek
+        ? await this.client.decodeSeek(this.playPosition, aheadSeconds)
+        : await this.client.decodeMore(aheadSeconds)
+      if (!this.playing) return
+      if (chunk) this.scheduleChunk(chunk)
+    } catch {
+      if (this.playing) {
+        this.playing = false
+        this.onPlayingCallback?.(false)
+        this.stopPositionUpdates()
+      }
+    } finally {
+      this.decodeInFlight = false
+    }
   }
 
   private scheduleChunk(chunk: Chunk): void {
@@ -277,6 +291,7 @@ export class AudioEngine {
         const source = this.ctx.createBufferSource()
         source.buffer = buffer
         source.connect(this.strips[trackIdx].gain)
+        source.onended = () => this.currentSources.delete(source)
         source.start(startTime, 0, chunkDuration)
         newSources.push(source)
       } else if (chs.length >= 2) {
@@ -293,12 +308,13 @@ export class AudioEngine {
         const source = this.ctx.createBufferSource()
         source.buffer = buffer
         source.connect(this.strips[trackIdx].gain)
+        source.onended = () => this.currentSources.delete(source)
         source.start(startTime, 0, samples / chunk.sampleRate)
         newSources.push(source)
       }
     }
 
-    this.currentSources.push(...newSources)
+    for (const source of newSources) this.currentSources.add(source)
     this.scheduledEnd = startTime + chunkDuration
     this.scheduledCount++
   }
@@ -353,7 +369,7 @@ export class AudioEngine {
     for (const source of this.currentSources) {
       try { source.stop() } catch { /* already stopped */ }
     }
-    this.currentSources = []
+    this.currentSources.clear()
   }
 
   private startPositionUpdates(): void {
@@ -387,6 +403,8 @@ export class AudioEngine {
 
   destroy(): void {
     this.pause()
+    this.ready = false
+    this.decodeInFlight = false
     this.ctx?.close()
     this.ctx = null
     this.client?.terminate()

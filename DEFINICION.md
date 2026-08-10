@@ -95,8 +95,9 @@ completo con control individual sobre cada instrumento, para centrarse en su pro
 - **vite-plugin-pwa** (PWA offline, auto-update)
 - **idb** (IndexedDB)
 
-### 5.2 Motor de audio: decodificación por ventana deslizante
+### 5.2 Motor de audio: lectura por rangos y decodificación por ventana deslizante
 - Decodificar 90 min × 18 canales a PCM completo requeriría ~18 GB de RAM: imposible.
+- El decoder lee el origen mediante rangos pequeños, sin cargar el archivo completo en memoria.
 - El Worker decodifica solo una **ventana de ~25 s por delante del cabezal** (~100 MB RAM).
 - Seek: bisección por granulepos Ogg + re-decodificación desde el nuevo punto.
 - Scheduling gapless mediante `AudioBufferSourceNode` encadenados.
@@ -110,7 +111,7 @@ Fuente (chunks) → GainNode (fader) → StereoPannerNode (pan) → GainNode (mu
 
 ### 5.4 PWA
 - Instalable en tablet/móvil, 100% offline tras la primera carga.
-- App shell precacheada; archivo `.opus` y mezcla en IndexedDB (con `storage.persist()`).
+- App shell precacheada; audio por bloques y mezcla en IndexedDB (con `storage.persist()`).
 - **Wake Lock:** la pantalla no se apaga durante la reproducción (uso en atril).
 - **Media Session API:** controles desde pantalla de bloqueo.
 - **Auto-update:** al detectar nueva versión desplegada, se actualiza (clave para la revocación

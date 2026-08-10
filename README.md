@@ -107,9 +107,9 @@ La app carga automáticamente `public/concert.json` como manifiesto del conciert
 - **Vite + Svelte 4 + TypeScript**
 - **Web Audio API**: `AudioBufferSourceNode` por pista, scheduling gapless
 - **libopus WASM**: decodificación Opus multicanal propia (los navegadores no decodifican bien >8 canales)
-- **IndexedDB**: persistencia del archivo de audio y la mezcla del usuario
+- **IndexedDB**: persistencia por bloques del audio y de la mezcla del usuario
 - **PWA**: service worker, instalable, offline
-- **Decodificación por ventana deslizante**: solo se decodifican ~25s alrededor del cabezal (~100 MB RAM en vez de ~18 GB)
+- **Lectura por rangos y decodificación por ventana deslizante**: solo se lee un bloque del archivo y se decodifican ~25s alrededor del cabezal (~100 MB RAM en vez de ~18 GB)
 
 ## Estructura
 

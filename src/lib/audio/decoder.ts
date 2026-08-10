@@ -1,4 +1,5 @@
 import { OggOpusDecoder } from 'ogg-opus-decoder'
+import type { AudioSource } from './source'
 
 interface SeekEntry {
   start: number
@@ -15,7 +16,7 @@ interface DecodedChunk {
 
 export class OpusStreamDecoder {
   private decoder: OggOpusDecoder | null = null
-  private fileData: Uint8Array | null = null
+  private fileData: AudioSource | null = null
   private seekTable: SeekEntry[] = []
   private headPage: { start: number; end: number } | null = null
   private tagsPage: { start: number; end: number } | null = null
@@ -24,9 +25,9 @@ export class OpusStreamDecoder {
   channels = 0
   duration = 0
 
-  async init(buffer: ArrayBuffer): Promise<void> {
-    this.fileData = new Uint8Array(buffer)
-    this.seekTable = this.buildSeekTable(this.fileData)
+  async init(source: AudioSource, onProgress?: (processedBytes: number, totalBytes: number) => void): Promise<void> {
+    this.fileData = source
+    this.seekTable = await this.buildSeekTable(source, onProgress)
     this.duration = this.seekTable[this.seekTable.length - 1]?.time ?? 0
 
     // Identify head and tags pages (first two pages with granule=0)
@@ -41,45 +42,82 @@ export class OpusStreamDecoder {
     await this.decoder.ready
   }
 
-  private buildSeekTable(data: Uint8Array): SeekEntry[] {
+  private async buildSeekTable(
+    source: AudioSource,
+    onProgress?: (processedBytes: number, totalBytes: number) => void
+  ): Promise<SeekEntry[]> {
     const pages: SeekEntry[] = []
-    let offset = 0
-    const dv = new DataView(data.buffer, data.byteOffset, data.byteLength)
+    const blockSize = 4 * 1024 * 1024
+    let sourceOffset = 0
+    let pending = new Uint8Array(0)
+    let pendingOffset = 0
+    let lastProgress = -1
 
-    while (offset < data.length - 27) {
-      if (data[offset] !== 0x4F || data[offset + 1] !== 0x67 ||
-          data[offset + 2] !== 0x67 || data[offset + 3] !== 0x53) {
-        offset++
-        continue
+    while (sourceOffset < source.size) {
+      const length = Math.min(blockSize, source.size - sourceOffset)
+      const block = await source.read(sourceOffset, length)
+      sourceOffset += block.length
+
+      const data = new Uint8Array(pending.length + block.length)
+      data.set(pending)
+      data.set(block, pending.length)
+      const dataOffset = pending.length > 0 ? pendingOffset : sourceOffset - block.length
+      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength)
+      let cursor = 0
+
+      while (cursor < data.length) {
+        let pageStart = cursor
+        while (pageStart + 4 <= data.length &&
+          (data[pageStart] !== 0x4F || data[pageStart + 1] !== 0x67 ||
+           data[pageStart + 2] !== 0x67 || data[pageStart + 3] !== 0x53)) {
+          pageStart++
+        }
+
+        if (pageStart + 27 > data.length) {
+          cursor = pageStart
+          break
+        }
+
+        const segmentCount = data[pageStart + 26]
+        if (pageStart + 27 + segmentCount > data.length) {
+          cursor = pageStart
+          break
+        }
+
+        let payloadSize = 0
+        for (let i = 0; i < segmentCount; i++) {
+          payloadSize += data[pageStart + 27 + i]
+        }
+        const pageEnd = pageStart + 27 + segmentCount + payloadSize
+        if (pageEnd > data.length) {
+          cursor = pageStart
+          break
+        }
+
+        const granulePos = Number(dv.getBigInt64(pageStart + 6, true))
+        pages.push({
+          start: dataOffset + pageStart,
+          end: dataOffset + pageEnd,
+          granulePos,
+          time: granulePos / 48000
+        })
+        cursor = pageEnd
       }
 
-      const granulePos = Number(dv.getBigInt64(offset + 6, true))
-      const segmentCount = data[offset + 26]
-
-      if (offset + 27 + segmentCount > data.length) break
-
-      let payloadSize = 0
-      for (let i = 0; i < segmentCount; i++) {
-        payloadSize += data[offset + 27 + i]
+      pending = data.slice(cursor)
+      pendingOffset = dataOffset + cursor
+      const progressStep = Math.max(1, Math.floor(source.size / 100))
+      if (sourceOffset === source.size || sourceOffset - lastProgress >= progressStep) {
+        onProgress?.(sourceOffset, source.size)
+        lastProgress = sourceOffset
       }
-      const pageEnd = offset + 27 + segmentCount + payloadSize
-      if (pageEnd > data.length) break
-
-      pages.push({
-        start: offset,
-        end: pageEnd,
-        granulePos,
-        time: granulePos / 48000
-      })
-
-      offset = pageEnd
     }
 
     return pages
   }
 
-  private getPageData(entry: SeekEntry): Uint8Array {
-    return this.fileData!.slice(entry.start, entry.end)
+  private getPageData(entry: { start: number; end: number }): Promise<Uint8Array> {
+    return this.fileData!.read(entry.start, entry.end - entry.start)
   }
 
   private findPageIndex(time: number): number {
@@ -98,16 +136,16 @@ export class OpusStreamDecoder {
   }
 
   async decodeAhead(fromTime: number, aheadSeconds: number): Promise<DecodedChunk | null> {
-    if (!this.decoder || !this.fileData) return null
+    if (!this.decoder || !this.fileData || this.seekTable.length === 0) return null
 
     // Reset decoder and re-feed headers
     await this.decoder.reset()
 
     if (this.headPage) {
-      await this.decoder.decode(this.fileData.slice(this.headPage.start, this.headPage.end))
+      await this.decoder.decode(await this.getPageData(this.headPage))
     }
     if (this.tagsPage) {
-      try { await this.decoder.decode(this.fileData.slice(this.tagsPage.start, this.tagsPage.end)) } catch { /* ok */ }
+      try { await this.decoder.decode(await this.getPageData(this.tagsPage)) } catch { /* ok */ }
     }
 
     const startPageIdx = this.findPageIndex(fromTime)
@@ -119,7 +157,7 @@ export class OpusStreamDecoder {
     let i = startPageIdx
 
     while (i < this.seekTable.length && this.seekTable[i].time < deadline) {
-      const pageData = this.getPageData(this.seekTable[i])
+      const pageData = await this.getPageData(this.seekTable[i])
       try {
         const result = await this.decoder.decode(pageData)
         if (result.samplesDecoded > 0 && result.channelData) {
@@ -157,7 +195,7 @@ export class OpusStreamDecoder {
   }
 
   async decodeMore(aheadSeconds: number): Promise<DecodedChunk | null> {
-    if (!this.decoder || !this.fileData) return null
+    if (!this.decoder || !this.fileData || this.seekTable.length === 0) return null
 
     if (this.currentPageIndex === 0) {
       return this.decodeAhead(0, aheadSeconds)
@@ -172,7 +210,7 @@ export class OpusStreamDecoder {
     let i = this.currentPageIndex
 
     while (i < this.seekTable.length && this.seekTable[i].time < deadline) {
-      const pageData = this.getPageData(this.seekTable[i])
+      const pageData = await this.getPageData(this.seekTable[i])
       try {
         const result = await this.decoder.decode(pageData)
         if (result.samplesDecoded > 0 && result.channelData) {

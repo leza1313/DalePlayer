@@ -1,5 +1,6 @@
 import { writable } from 'svelte/store'
 import { AudioEngine, type TrackDef } from '../audio/engine'
+import type { AudioSourceDescriptor } from '../audio/source'
 
 let engine: AudioEngine | null = null
 
@@ -20,9 +21,20 @@ function createEngine(): AudioEngine {
   return engine
 }
 
-export async function initPlayer(file: ArrayBuffer, tracks?: TrackDef[]): Promise<AudioEngine> {
+export async function initPlayer(
+  source: AudioSourceDescriptor,
+  tracks?: TrackDef[],
+  onProgress?: (processedBytes: number, totalBytes: number) => void
+): Promise<AudioEngine> {
+  engine?.destroy()
   const eng = createEngine()
-  await eng.init(file, tracks)
+  try {
+    await eng.init(source, tracks, onProgress)
+  } catch (error) {
+    eng.destroy()
+    if (engine === eng) engine = null
+    throw error
+  }
   trackCount.set(eng.getTrackCount())
   focusTrack.set(-1)
   ready.set(true)
