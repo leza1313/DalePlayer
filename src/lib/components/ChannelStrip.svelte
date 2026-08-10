@@ -3,7 +3,7 @@
 
   import { onDestroy, onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
+  import { dbToGain, dbToSlider, formatDb, gainToDb, snapPanValue, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
   import {
     focusTrack, getMixState, getTrackLevel, mixReset, setTrackFocus,
     setTrackMute, setTrackPan, setTrackSolo, setTrackVolume
@@ -23,6 +23,8 @@
   let volumeSliderValue = 1
   let pan = 0
   let panSliderValue = 0
+  let volumeReferenceLocked = false
+  let panReferenceLocked = false
   let muted = false
   let solo = false
   let level = 0
@@ -32,6 +34,8 @@
 
   $: if ($mixReset !== resetVersion) {
     resetVersion = $mixReset
+    volumeReferenceLocked = false
+    panReferenceLocked = false
     const state = getMixState()[index]
     if (state) {
       volume = state.volume
@@ -61,8 +65,11 @@
   })
 
   function handleVolumeSlider(value: number) {
-    volumeSliderValue = value
-    volume = dbToGain(sliderToDb(value))
+    const snapped = snapVolumeSlider(value)
+    if (snapped.snapped && !volumeReferenceLocked) triggerReferenceHaptic()
+    volumeReferenceLocked = snapped.snapped
+    volumeSliderValue = snapped.slider
+    volume = snapped.gain
     setTrackVolume(index, volume)
     scheduleMixSave()
   }
@@ -72,9 +79,12 @@
   }
 
   function handlePan(value: number) {
-    panSliderValue = value
-    pan = value
-    setTrackPan(index, value)
+    const snapped = snapPanValue(value)
+    if (snapped.snapped && !panReferenceLocked) triggerReferenceHaptic()
+    panReferenceLocked = snapped.snapped
+    panSliderValue = snapped.value
+    pan = snapped.value
+    setTrackPan(index, snapped.value)
     scheduleMixSave()
   }
 
@@ -125,14 +135,20 @@
     <div class="channel-controls">
       <label class="slider-control">
         <span class="control-heading"><strong>Volumen</strong><output>{formatDb(volume)}</output></span>
-        <input class="volume-slider" style={`--range-progress: ${volumeSliderValue * 100}%`} type="range" min="0" max="1" step="0.001" value={volumeSliderValue} on:input={handleVolumeInput} aria-label={`Volumen de ${name}`} />
+        <span class="slider-visual">
+          <input class="volume-slider" style={`--range-progress: ${volumeSliderValue * 100}%`} type="range" min="0" max="1" step="0.001" value={volumeSliderValue} on:input={handleVolumeInput} aria-label={`Volumen de ${name}`} />
+          <span class="reference-marker volume-reference" aria-hidden="true"></span>
+        </span>
         <span class="scale"><span>-∞</span><span>0 dB</span><span>+10 dB</span></span>
       </label>
 
       {#if isMono}
         <label class="slider-control">
           <span class="control-heading"><strong>Paneo</strong><output>{panText}</output></span>
-          <input class="pan-slider" type="range" min="-1" max="1" step="0.01" value={panSliderValue} on:input={handlePanInput} aria-label={`Paneo de ${name}`} />
+          <span class="slider-visual">
+            <input class="pan-slider" type="range" min="-1" max="1" step="0.01" value={panSliderValue} on:input={handlePanInput} aria-label={`Paneo de ${name}`} />
+            <span class="reference-marker pan-reference" aria-hidden="true"></span>
+          </span>
           <span class="scale"><span>I</span><span>Centro</span><span>D</span></span>
         </label>
       {/if}
@@ -170,7 +186,11 @@
   output { color: #dfc47f; font-variant-numeric: tabular-nums; }
   .scale { position: relative; color: var(--text-secondary); font-size: 0.65rem; }
   .scale span:nth-child(2) { position: absolute; left: 85.714%; transform: translateX(-50%); }
-  input[type="range"] { width: 100%; height: 28px; }
+  .slider-visual { position: relative; display: block; }
+  input[type="range"] { position: relative; z-index: 1; width: 100%; height: 28px; }
+  .reference-marker { position: absolute; z-index: 2; top: 50%; width: 2px; height: 12px; border-radius: 2px; background: rgba(238, 233, 220, 0.55); pointer-events: none; transform: translate(-50%, -50%); }
+  .volume-reference { left: 85.714%; }
+  .pan-reference { left: 50%; height: 16px; background: rgba(215, 218, 218, 0.55); }
   .volume-slider { accent-color: var(--fader-fill); }
   .volume-slider::-webkit-slider-runnable-track {
     background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%);

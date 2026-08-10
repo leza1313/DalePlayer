@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
+  import { dbToSlider, formatDb, gainToDb, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
   import { getMasterLevel, masterVolume as masterVolumeState, resetMix, setMasterVolume } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
 
   let masterVolume = 1
   $: masterSliderValue = dbToSlider(gainToDb(masterVolume))
+  let volumeReferenceLocked = false
   $: masterVolume = $masterVolumeState
   let level = 0
   let confirmReset = false
@@ -19,7 +20,10 @@
   })
 
   function handleVolume(value: number) {
-    setMasterVolume(dbToGain(sliderToDb(value)))
+    const snapped = snapVolumeSlider(value)
+    if (snapped.snapped && !volumeReferenceLocked) triggerReferenceHaptic()
+    volumeReferenceLocked = snapped.snapped
+    setMasterVolume(snapped.gain)
     scheduleMixSave()
   }
 
@@ -29,6 +33,7 @@
       return
     }
     resetMix()
+    volumeReferenceLocked = false
     confirmReset = false
     scheduleMixSave()
   }
@@ -39,7 +44,10 @@
     <div><span class="eyebrow">Salida</span><strong>Master</strong></div>
     <output>{formatDb(masterVolume)}</output>
   </div>
-  <input class="master-slider" style={`--range-progress: ${masterSliderValue * 100}%`} type="range" min="0" max="1" step="0.001" value={masterSliderValue} on:input={(e) => handleVolume(+e.currentTarget.value)} aria-label="Volumen master" />
+  <span class="slider-visual">
+    <input class="master-slider" style={`--range-progress: ${masterSliderValue * 100}%`} type="range" min="0" max="1" step="0.001" value={masterSliderValue} on:input={(e) => handleVolume(+e.currentTarget.value)} aria-label="Volumen master" />
+    <span class="reference-marker" aria-hidden="true"></span>
+  </span>
   <div class="scale"><span>-∞</span><span>0 dB</span><span>+10 dB</span></div>
   <div class="master-footer">
     <div class="meter" class:warn={level > 0.7} class:clip={level > 0.9}><div class="meter-fill" style="width: {Math.min(level * 100, 100)}%"></div></div>
@@ -55,7 +63,9 @@
   .master-heading strong { display: block; font-size: 1rem; letter-spacing: 0.02em; }
   .eyebrow { display: block; color: #c39a43; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
   output { color: #dfc47f; font-size: 0.8rem; }
-  input[type="range"] { width: 100%; height: 32px; margin: 10px 0 2px; }
+  .slider-visual { position: relative; display: block; margin: 10px 0 2px; }
+  input[type="range"] { position: relative; z-index: 1; width: 100%; height: 32px; }
+  .reference-marker { position: absolute; z-index: 0; top: 50%; left: 85.714%; width: 2px; height: 13px; border-radius: 2px; background: rgba(238, 233, 220, 0.55); pointer-events: none; transform: translate(-50%, -50%); }
   .master-slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
   .master-slider::-moz-range-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
   .scale { position: relative; color: var(--text-secondary); font-size: 0.65rem; }

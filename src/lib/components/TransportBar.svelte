@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { appState } from '../state/app.svelte'
-  import { dbToGain, dbToSlider, formatDb, gainToDb, sliderToDb } from '../audio/levels'
+  import { dbToSlider, formatDb, gainToDb, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
   import { duration, masterVolume as masterVolumeState, playing, position, seek, setMasterVolume, togglePlay } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
 
@@ -21,6 +21,7 @@
   let masterVolume = 1
   $: masterVolume = $masterVolumeState
   $: masterSliderValue = dbToSlider(gainToDb(masterVolume))
+  let volumeReferenceLocked = false
   let showSongs = false
 
   onMount(() => {
@@ -46,7 +47,10 @@
   }
 
   function handleMaster(value: number) {
-    masterVolume = dbToGain(sliderToDb(value))
+    const snapped = snapVolumeSlider(value)
+    if (snapped.snapped && !volumeReferenceLocked) triggerReferenceHaptic()
+    volumeReferenceLocked = snapped.snapped
+    masterVolume = snapped.gain
     setMasterVolume(masterVolume)
     scheduleMixSave()
   }
@@ -108,17 +112,20 @@
 
   <label class="master-control">
     <span>Master</span>
-    <input
-      class="master-slider"
-      style={`--range-progress: ${masterSliderValue * 100}%`}
-      type="range"
-      min="0"
-      max="1"
-      step="0.001"
-      value={masterSliderValue}
-      on:input={(e) => handleMaster(+e.currentTarget.value)}
-      aria-label="Volumen master"
-    />
+    <span class="slider-visual">
+      <input
+        class="master-slider"
+        style={`--range-progress: ${masterSliderValue * 100}%`}
+        type="range"
+        min="0"
+        max="1"
+        step="0.001"
+        value={masterSliderValue}
+        on:input={(e) => handleMaster(+e.currentTarget.value)}
+        aria-label="Volumen master"
+      />
+      <span class="reference-marker" aria-hidden="true"></span>
+    </span>
     <strong>{formatDb(masterVolume)}</strong>
   </label>
 </footer>
@@ -188,6 +195,9 @@
   .master-control span { color: #c39a43; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
   .master-control strong { color: var(--text-primary); font-size: 0.7rem; font-weight: 600; }
   .master-control input { width: 100%; }
+  .slider-visual { position: relative; display: block; }
+  .master-slider { position: relative; z-index: 1; }
+  .reference-marker { position: absolute; z-index: 2; top: 50%; left: 85.714%; width: 2px; height: 11px; border-radius: 2px; background: rgba(238, 233, 220, 0.55); pointer-events: none; transform: translate(-50%, -50%); }
   .master-slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
   .master-slider::-moz-range-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
 
