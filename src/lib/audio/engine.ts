@@ -52,6 +52,7 @@ export class AudioEngine {
   private muted: boolean[] = []
   private volumes: number[] = []
   private pans: number[] = []
+  private masterVolume = 1
   private focusTrack = -1
   private trackDefs: TrackDef[] = []
   private trackCount = 0
@@ -142,6 +143,7 @@ export class AudioEngine {
   }
 
   setMasterVolume(v: number): void {
+    this.masterVolume = v
     if (this.masterGain) this.masterGain.gain.value = v
   }
 
@@ -201,6 +203,7 @@ export class AudioEngine {
     }
     this.focusTrack = -1
     this.applyMuteSolo()
+    this.masterVolume = 1
     if (this.masterGain) this.masterGain.gain.value = 1
   }
 
@@ -218,7 +221,7 @@ export class AudioEngine {
   }
 
   getMasterVolume(): number {
-    return this.masterGain?.gain.value ?? 1
+    return this.masterVolume
   }
 
   getFocusTrack(): number { return this.focusTrack }
@@ -377,7 +380,7 @@ export class AudioEngine {
     this.masterMeterPeak = 0
 
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 1
+    this.masterGain.gain.value = this.masterVolume
 
     this.masterAnalyser = this.ctx.createAnalyser()
     this.masterAnalyser.fftSize = 1024

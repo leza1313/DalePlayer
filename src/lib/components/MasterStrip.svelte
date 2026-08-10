@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { appState } from '../state/app.svelte'
   import { dbToSlider, formatDb, gainToDb, snapVolumeSlider, triggerReferenceHaptic } from '../audio/levels'
   import { getMasterMeter, masterVolume as masterVolumeState, resetMix, setMasterVolume } from '../state/player.svelte'
   import { scheduleMixSave } from '../state/mixState'
@@ -15,7 +14,6 @@
   let vuInterval: ReturnType<typeof setInterval> | null = null
 
   onMount(() => {
-    setMasterVolume($appState.concert?.masterVolume ?? 1)
     vuInterval = setInterval(() => {
       const meter = getMasterMeter()
       level = meter.level
