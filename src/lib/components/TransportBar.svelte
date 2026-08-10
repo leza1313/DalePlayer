@@ -12,6 +12,7 @@
   $: currentSong = markers.reduce((active, marker) => marker.time <= currentTime ? marker : active, markers[0])
   let masterVolume = 1
   $: masterVolume = $masterVolumeState
+  $: masterSliderValue = dbToSlider(gainToDb(masterVolume))
 
   onMount(() => {
     masterVolume = $appState.concert?.masterVolume ?? 1
@@ -62,11 +63,13 @@
   <label class="master-control">
     <span>Master</span>
     <input
+      class="master-slider"
+      style={`--range-progress: ${masterSliderValue * 100}%`}
       type="range"
       min="0"
       max="1"
       step="0.001"
-      value={dbToSlider(gainToDb(masterVolume))}
+      value={masterSliderValue}
       on:input={(e) => handleMaster(+e.currentTarget.value)}
       aria-label="Volumen master"
     />
@@ -110,6 +113,8 @@
   .master-control span { color: #c39a43; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
   .master-control strong { color: var(--text-primary); font-size: 0.7rem; font-weight: 600; }
   .master-control input { width: 100%; }
+  .master-slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
+  .master-slider::-moz-range-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
 
   @media (max-width: 380px) {
     .master-control { width: 78px; }
