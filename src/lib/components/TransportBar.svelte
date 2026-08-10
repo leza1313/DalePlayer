@@ -23,6 +23,7 @@
   $: masterSliderValue = dbToSlider(gainToDb(masterVolume))
   let volumeReferenceLocked = false
   let showSongs = false
+  let showMaster = false
 
   onMount(() => {
     masterVolume = $appState.concert?.masterVolume ?? 1
@@ -110,24 +111,15 @@
     <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6 3l5 5-5 5" /></svg>
   </button>
 
-  <label class="master-control">
-    <span>Master</span>
-    <span class="slider-visual">
-      <input
-        class="master-slider"
-        style={`--range-progress: ${masterSliderValue * 100}%`}
-        type="range"
-        min="0"
-        max="1"
-        step="0.001"
-        value={masterSliderValue}
-        on:input={(e) => handleMaster(+e.currentTarget.value)}
-        aria-label="Volumen master"
-      />
-      <span class="reference-marker" aria-hidden="true"></span>
+  <button class="master-control" on:click={() => showMaster = true} aria-label={`Abrir volumen general, ${formatDb(masterVolume)}`}>
+    <span class="master-icon" aria-hidden="true">
+      <svg viewBox="0 0 20 20" focusable="false">
+        <path d="M4 8h3l4-3v10l-4-3H4z" />
+        <path d="M14 7.5c1 .7 1.5 1.5 1.5 2.5s-.5 1.8-1.5 2.5" />
+      </svg>
     </span>
-    <strong>{formatDb(masterVolume)}</strong>
-  </label>
+    <span class="master-copy"><small>Volumen</small><strong>{formatDb(masterVolume)}</strong></span>
+  </button>
 </footer>
 
 {#if showSongs}
@@ -147,6 +139,35 @@
           </button>
         {/each}
       </div>
+    </section>
+  </div>
+{/if}
+
+{#if showMaster}
+  <div class="song-sheet-layer">
+    <button class="sheet-backdrop" aria-label="Cerrar volumen master" on:click={() => showMaster = false}></button>
+    <section class="song-sheet master-sheet" aria-label="Ajustar volumen master">
+      <div class="sheet-header">
+        <div><span class="sheet-eyebrow">Salida general</span><h2>Volumen</h2></div>
+        <button class="sheet-close" aria-label="Cerrar" on:click={() => showMaster = false}>×</button>
+      </div>
+      <div class="master-sheet-value">{formatDb(masterVolume)}</div>
+      <span class="slider-visual master-sheet-slider">
+        <input
+          class="master-slider"
+          style={`--range-progress: ${masterSliderValue * 100}%`}
+          type="range"
+          min="0"
+          max="1"
+          step="0.001"
+          value={masterSliderValue}
+          on:input={(e) => handleMaster(+e.currentTarget.value)}
+          aria-label="Volumen master"
+        />
+        <span class="reference-marker" aria-hidden="true"></span>
+      </span>
+      <div class="master-scale"><span>-∞</span><span>0 dB</span><span>+10 dB</span></div>
+      <p class="master-sheet-hint">Toca fuera para cerrar</p>
     </section>
   </div>
 {/if}
@@ -191,10 +212,13 @@
   .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); box-shadow: 0 0 7px rgba(184, 134, 36, 0.35); }
   .transport-time { color: var(--text-secondary); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
 
-  .master-control { width: 96px; display: grid; gap: 3px; flex-shrink: 0; color: var(--text-secondary); font-size: 0.68rem; }
-  .master-control span { color: #c39a43; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-  .master-control strong { color: var(--text-primary); font-size: 0.7rem; font-weight: 600; }
-  .master-control input { width: 100%; }
+  .master-control { width: 96px; min-height: 42px; display: flex; align-items: center; justify-content: flex-start; gap: 6px; flex-shrink: 0; padding: 6px 13px 6px 7px; border: 1px solid var(--border); border-radius: 8px; background: #252c32; color: var(--text-secondary); text-align: left; }
+  .master-control:active { border-color: var(--accent); background: var(--accent-soft); }
+  .master-icon { display: inline-flex; color: #c39a43; }
+  .master-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.5; }
+  .master-copy { display: grid; gap: 1px; min-width: 0; }
+  .master-copy small { color: #c39a43; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .master-copy strong { overflow: hidden; color: var(--text-primary); font-size: 0.68rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
   .slider-visual { position: relative; display: block; }
   .master-slider { position: relative; z-index: 1; }
   .reference-marker { position: absolute; z-index: 2; top: 50%; left: 85.714%; width: 2px; height: 11px; border-radius: 2px; background: rgba(238, 233, 220, 0.55); pointer-events: none; transform: translate(-50%, -50%); }
@@ -202,7 +226,7 @@
   .master-slider::-moz-range-track { background: linear-gradient(to right, var(--fader-fill) 0%, var(--fader-fill) var(--range-progress), var(--fader-track) var(--range-progress), var(--fader-track) 100%); }
 
   @media (max-width: 380px) {
-    .master-control { width: 78px; }
+    .master-control { width: 90px; padding-left: 6px; padding-right: 11px; }
     .song-nav { min-width: 34px; padding: 0 3px; }
     .transport { gap: 7px; padding-left: 8px; padding-right: 8px; }
   }
@@ -215,6 +239,14 @@
   h2 { margin-top: 3px; font-size: 1.2rem; }
   .sheet-close { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 50%; background: #252c32; color: var(--text-secondary); font-size: 1.3rem; line-height: 1; }
   .sheet-list { max-width: 720px; max-height: calc(min(76vh, 620px) - 90px); overflow-y: auto; margin: 0 auto; }
+  .master-sheet { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+  .master-sheet-value { margin: 22px 0 18px; color: #dfc47f; font-size: 1.8rem; font-variant-numeric: tabular-nums; font-weight: 700; text-align: center; }
+  .master-sheet-slider { max-width: 720px; margin: 0 auto; }
+  .master-sheet-slider .master-slider { width: 100%; height: 42px; }
+  .master-sheet-slider .reference-marker { left: calc(85.714% - 6px); height: 17px; }
+  .master-scale { position: relative; display: flex; justify-content: space-between; max-width: 720px; margin: 1px auto 0; color: var(--text-secondary); font-size: 0.7rem; }
+  .master-scale span:nth-child(2) { position: absolute; left: calc(85.714% - 6px); transform: translateX(-50%); }
+  .master-sheet-hint { margin: 22px 0 0; color: var(--text-secondary); font-size: 0.72rem; text-align: center; }
   .sheet-song { width: 100%; min-height: 52px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); background: transparent; color: var(--text-primary); text-align: left; }
   .sheet-song.current { border-radius: 7px; background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
   .sheet-index, .sheet-time { color: var(--text-secondary); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
