@@ -30,8 +30,8 @@
       const buffer = await file.arrayBuffer()
       const manifest = await fetchManifest()
       const trackDefs: TrackDef[] | undefined = manifest?.tracks
-      await initPlayer(buffer, trackDefs)
       await loadAudio(buffer)
+      await initPlayer(buffer, trackDefs)
       await loadConcert(file, manifest, getTrackCount())
       applyMixFromState()
       appState.setPhase('ready')

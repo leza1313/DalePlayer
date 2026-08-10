@@ -1,4 +1,4 @@
-import { OpusStreamDecoder } from './decoder'
+import { DecoderClient } from './decoder-client'
 
 interface Chunk {
   channelData: Float32Array[]
@@ -23,7 +23,7 @@ interface MixStrip {
 
 export class AudioEngine {
   private ctx: AudioContext | null = null
-  private decoder: OpusStreamDecoder | null = null
+  private client: DecoderClient | null = null
   private ready = false
   private playing = false
   private playPosition = 0
@@ -48,20 +48,20 @@ export class AudioEngine {
   onDurationUpdate(cb: DurationCallback) { this.onDurationCallback = cb }
 
   async init(file: ArrayBuffer, tracks?: TrackDef[]): Promise<void> {
-    this.decoder = new OpusStreamDecoder()
-    await this.decoder.init(file)
-    this.duration = this.decoder.duration
+    this.client = new DecoderClient()
+    const info = await this.client.init(file)
+    this.duration = info.duration
 
     this.trackDefs = tracks ?? []
-    this.trackCount = tracks?.length ?? this.decoder.channels
+    this.trackCount = tracks?.length ?? info.channels
 
     if (tracks && tracks.length > 0) {
       this.trackCount = tracks.length
     } else {
       // Auto-generate mono tracks for all raw channels
-      this.trackCount = this.decoder.channels
+      this.trackCount = info.channels
       this.trackDefs = []
-      for (let ch = 0; ch < this.decoder.channels; ch++) {
+      for (let ch = 0; ch < info.channels; ch++) {
         this.trackDefs.push({ name: `Canal ${ch + 1}`, channels: [ch] })
       }
     }
@@ -85,7 +85,7 @@ export class AudioEngine {
 
   async play(from?: number): Promise<void> {
     this.ensureContext()
-    if (!this.ready || !this.decoder || !this.ctx) return
+    if (!this.ready || !this.client || !this.ctx) return
     if (from !== undefined) this.playPosition = from
     this.playing = true
     this.scheduledCount = 0
@@ -211,16 +211,17 @@ export class AudioEngine {
   }
 
   private async requestAndSchedule(aheadSeconds: number): Promise<void> {
-    if (!this.decoder || !this.ctx) return
+    if (!this.client || !this.ctx) return
     const isSeek = this.scheduledCount === 0
     const chunk = isSeek
-      ? await this.decoder.decodeAhead(this.playPosition, aheadSeconds)
-      : await this.decoder.decodeMore(aheadSeconds)
+      ? await this.client.decodeSeek(this.playPosition, aheadSeconds)
+      : await this.client.decodeMore(aheadSeconds)
+    if (!this.playing) return
     if (chunk) this.scheduleChunk(chunk)
   }
 
   private scheduleChunk(chunk: Chunk): void {
-    if (!this.ctx) return
+    if (!this.ctx || !this.playing) return
 
     if (this.strips.length === 0 || this.scheduledCount === 0) {
       this.rebuildGraph()
@@ -345,7 +346,7 @@ export class AudioEngine {
     this.pause()
     this.ctx?.close()
     this.ctx = null
-    this.decoder?.destroy()
-    this.decoder = null
+    this.client?.terminate()
+    this.client = null
   }
 }
