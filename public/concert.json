@@ -3,7 +3,7 @@
   "tracks": [
     { "name": "Bateria",  "channels": [0, 1], "defaultVolume": 0.6 },
     { "name": "Congas",  "channels": [2, 3], "defaultVolume": 0.64 },
-    { "name": "Percu",  "channels": [4], "defaultPan": -0.89, "defaultVolume": 1.58 },
+    { "name": "Percu",  "channels": [4], "defaultPan": 0, "defaultVolume": 1 },
     { "name": "Campana",  "channels": [5], "defaultPan": 0.75 },
     { "name": "Bajo",  "channels": [6] },
     { "name": "Teclado",  "channels": [7], "defaultPan": -0.35 },
