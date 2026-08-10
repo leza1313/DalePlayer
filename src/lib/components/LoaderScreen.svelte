@@ -44,6 +44,8 @@
         await loadAudio(file, ({ processedBytes, totalBytes }) => {
           reportProgress('saving', processedBytes / totalBytes)
         })
+        const storedAudio = await getStoredAudio()
+        if (storedAudio) source.blob = storedAudio
       } catch (saveError: any) {
         appState.setNotice(storageErrorMessage(saveError))
       }

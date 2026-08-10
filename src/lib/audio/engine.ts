@@ -64,6 +64,9 @@ export class AudioEngine {
   private positionInterval: ReturnType<typeof setInterval> | null = null
   private scheduledCount = 0
   private decodeInFlight = false
+  private readonly initialAheadSeconds = 10
+  private readonly refillAheadSeconds = 8
+  private readonly targetBufferSeconds = 12
 
   onPositionUpdate(cb: PositionCallback) { this.onPositionCallback = cb }
   onDurationUpdate(cb: DurationCallback) { this.onDurationCallback = cb }
@@ -102,21 +105,22 @@ export class AudioEngine {
 
   getTrackDefs(): TrackDef[] { return this.trackDefs }
 
-  private ensureContext() {
+  private async ensureContext(): Promise<void> {
     if (!this.ctx) {
       this.ctx = new AudioContext({ sampleRate: 48000 })
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume()
+    if (this.ctx.state === 'suspended') await this.ctx.resume()
+    if (this.ctx.state !== 'running') throw new Error(`AudioContext no disponible: ${this.ctx.state}`)
   }
 
   async play(from?: number): Promise<void> {
-    this.ensureContext()
+    await this.ensureContext()
     if (!this.ready || !this.client || !this.ctx) return
     if (from !== undefined) this.playPosition = from
     this.playing = true
     this.onPlayingCallback?.(true)
     this.scheduledCount = 0
-    await this.requestAndSchedule(5)
+    await this.requestAndSchedule(this.initialAheadSeconds)
     this.startPositionUpdates()
   }
 
@@ -301,6 +305,9 @@ export class AudioEngine {
       }
     } finally {
       this.decodeInFlight = false
+      if (this.playing && this.scheduledEnd - (this.ctx?.currentTime ?? 0) < this.targetBufferSeconds) {
+        void this.requestAndSchedule(this.refillAheadSeconds)
+      }
     }
   }
 
@@ -326,7 +333,7 @@ export class AudioEngine {
         const srcCh = chs[0]
         if (srcCh >= chunk.channelData.length) continue
         const buffer = this.ctx.createBuffer(1, samplesPerRawCh, chunk.sampleRate)
-        buffer.copyToChannel(new Float32Array(chunk.channelData[srcCh]), 0)
+        buffer.copyToChannel(chunk.channelData[srcCh] as Float32Array<ArrayBuffer>, 0)
         const source = this.ctx.createBufferSource()
         source.buffer = buffer
         source.connect(this.strips[trackIdx].gain)
@@ -342,8 +349,8 @@ export class AudioEngine {
         const samplesR = chunk.channelData[rightCh].length
         const samples = Math.min(samplesL, samplesR)
         const buffer = this.ctx.createBuffer(2, samples, chunk.sampleRate)
-        buffer.copyToChannel(chunk.channelData[leftCh].slice(0, samples), 0)
-        buffer.copyToChannel(chunk.channelData[rightCh].slice(0, samples), 1)
+        buffer.copyToChannel(chunk.channelData[leftCh].subarray(0, samples) as Float32Array<ArrayBuffer>, 0)
+        buffer.copyToChannel(chunk.channelData[rightCh].subarray(0, samples) as Float32Array<ArrayBuffer>, 1)
         const source = this.ctx.createBufferSource()
         source.buffer = buffer
         source.connect(this.strips[trackIdx].gain)
@@ -431,8 +438,8 @@ export class AudioEngine {
       }
       this.playPosition = position
       this.onPositionCallback?.(position)
-      if (this.ctx && this.scheduledEnd - this.ctx.currentTime < 4) {
-        this.requestAndSchedule(5)
+      if (this.ctx && this.scheduledEnd - this.ctx.currentTime < this.targetBufferSeconds) {
+        void this.requestAndSchedule(this.refillAheadSeconds)
       }
     }, 100)
   }

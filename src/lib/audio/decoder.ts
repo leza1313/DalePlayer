@@ -120,6 +120,47 @@ export class OpusStreamDecoder {
     return this.fileData!.read(entry.start, entry.end - entry.start)
   }
 
+  private async decodePages(startPageIndex: number, deadline: number): Promise<{
+    channelChunks: Float32Array[][]
+    totalSamples: number
+    nextPageIndex: number
+  }> {
+    if (!this.decoder || !this.fileData || startPageIndex >= this.seekTable.length) {
+      return { channelChunks: [], totalSamples: 0, nextPageIndex: startPageIndex }
+    }
+
+    let endPageIndex = startPageIndex
+    while (endPageIndex < this.seekTable.length && this.seekTable[endPageIndex].time < deadline) {
+      endPageIndex++
+    }
+    if (endPageIndex === startPageIndex) {
+      return { channelChunks: [], totalSamples: 0, nextPageIndex: startPageIndex }
+    }
+
+    const firstPage = this.seekTable[startPageIndex]
+    const lastPage = this.seekTable[endPageIndex - 1]
+    const windowData = await this.fileData.read(firstPage.start, lastPage.end - firstPage.start)
+    const channelChunks: Float32Array[][] = []
+    let totalSamples = 0
+
+    for (let i = startPageIndex; i < endPageIndex; i++) {
+      const page = this.seekTable[i]
+      const pageData = windowData.subarray(page.start - firstPage.start, page.end - firstPage.start)
+      try {
+        const result = await this.decoder.decode(pageData)
+        if (result.samplesDecoded > 0 && result.channelData) {
+          this.channels = result.channelData.length
+          channelChunks.push(result.channelData as Float32Array[])
+          totalSamples += result.samplesDecoded
+        }
+      } catch {
+        // skip decoding errors for individual pages
+      }
+    }
+
+    return { channelChunks, totalSamples, nextPageIndex: endPageIndex }
+  }
+
   private findPageIndex(time: number): number {
     let lo = 0
     let hi = this.seekTable.length - 1
@@ -152,26 +193,10 @@ export class OpusStreamDecoder {
     const startTime = this.seekTable[startPageIdx].time
     const deadline = startTime + aheadSeconds
 
-    const channelChunks: Float32Array[][] = []
-    let totalSamples = 0
-    let i = startPageIdx
-
-    while (i < this.seekTable.length && this.seekTable[i].time < deadline) {
-      const pageData = await this.getPageData(this.seekTable[i])
-      try {
-        const result = await this.decoder.decode(pageData)
-        if (result.samplesDecoded > 0 && result.channelData) {
-          this.channels = result.channelData.length
-          channelChunks.push(result.channelData as Float32Array[])
-          totalSamples += result.samplesDecoded
-        }
-      } catch {
-        // skip decoding errors for individual pages
-      }
-      i++
-    }
-
-    this.currentPageIndex = i
+    const decoded = await this.decodePages(startPageIdx, deadline)
+    const channelChunks = decoded.channelChunks
+    const totalSamples = decoded.totalSamples
+    this.currentPageIndex = decoded.nextPageIndex
 
     if (channelChunks.length === 0) return null
 
@@ -200,28 +225,16 @@ export class OpusStreamDecoder {
     if (this.currentPageIndex === 0) {
       return this.decodeAhead(0, aheadSeconds)
     }
+    if (this.currentPageIndex >= this.seekTable.length) return null
 
     // Continue decoding from where we left off (no reset needed)
     const startTime = this.seekTable[this.currentPageIndex].time
     const deadline = startTime + aheadSeconds
 
-    const channelChunks: Float32Array[][] = []
-    let totalSamples = 0
-    let i = this.currentPageIndex
-
-    while (i < this.seekTable.length && this.seekTable[i].time < deadline) {
-      const pageData = await this.getPageData(this.seekTable[i])
-      try {
-        const result = await this.decoder.decode(pageData)
-        if (result.samplesDecoded > 0 && result.channelData) {
-          channelChunks.push(result.channelData as Float32Array[])
-          totalSamples += result.samplesDecoded
-        }
-      } catch { /* skip */ }
-      i++
-    }
-
-    this.currentPageIndex = i
+    const decoded = await this.decodePages(this.currentPageIndex, deadline)
+    const channelChunks = decoded.channelChunks
+    const totalSamples = decoded.totalSamples
+    this.currentPageIndex = decoded.nextPageIndex
 
     if (channelChunks.length === 0) return null
 
