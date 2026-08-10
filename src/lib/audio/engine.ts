@@ -9,6 +9,7 @@ interface Chunk {
 export interface TrackDef {
   name: string
   channels: number[]  // raw channel indices
+  defaultPan?: number
 }
 
 type PositionCallback = (timeSeconds: number) => void

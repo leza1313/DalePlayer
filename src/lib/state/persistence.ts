@@ -20,8 +20,9 @@ export async function isStored(): Promise<boolean> {
   return keys.length > 0
 }
 
-function defaultMixState(): MixState {
-  return { volume: 0.8, pan: 0, mute: false, solo: false }
+function defaultMixState(defaultPan = 0): MixState {
+  const pan = Number.isFinite(defaultPan) ? Math.max(-1, Math.min(1, defaultPan)) : 0
+  return { volume: 0.8, pan, mute: false, solo: false }
 }
 
 function buildConcertState(manifest: ConcertManifest | null, trackCount: number): ConcertState {
@@ -29,7 +30,7 @@ function buildConcertState(manifest: ConcertManifest | null, trackCount: number)
   const totalTracks = trackDefs.length > 0 ? trackDefs.length : trackCount
   const mixTracks: MixState[] = []
   for (let i = 0; i < totalTracks; i++) {
-    mixTracks.push(defaultMixState())
+    mixTracks.push(defaultMixState(trackDefs[i]?.defaultPan))
   }
   return { manifest, tracks: mixTracks, masterVolume: 0.8 }
 }
@@ -89,7 +90,8 @@ export async function loadConcert(
       // Ajustar la mezcla guardada al número de pistas actual
       if (concert.tracks.length < expectedTracks) {
         while (concert.tracks.length < expectedTracks) {
-          concert.tracks.push(defaultMixState())
+          const trackIndex = concert.tracks.length
+          concert.tracks.push(defaultMixState(resolvedManifest?.tracks?.[trackIndex]?.defaultPan))
         }
       } else if (concert.tracks.length > expectedTracks) {
         concert.tracks = concert.tracks.slice(0, expectedTracks)

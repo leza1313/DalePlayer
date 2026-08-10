@@ -81,6 +81,7 @@ completo con control individual sobre cada instrumento, para centrarse en su pro
 }
 ```
 - `tracks[].channels`: 1 canal = pista mono, 2 canales = pista estéreo.
+- `tracks[].defaultPan`: paneo inicial opcional entre -1 (izquierda) y 1 (derecha). Solo se usa al crear la mezcla por primera vez.
 - `markers[].time`: segundos desde el inicio.
 - Sin manifiesto: nombres por defecto (Canal 1..N) y sin marcadores.
 
